@@ -138,6 +138,21 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
           {showCalls && <div className="mt-1.5"><CallsList calls={approval.calls} /></div>}
         </div>
 
+        <div className="space-y-1 rounded-lg bg-surface-2 p-2.5 text-[12.5px]">
+          <div>
+            <span className="text-muted">سطح ریسک: </span>
+            <span className={`font-semibold ${destructive ? "text-bad" : "text-accent"}`}>
+              {destructive ? "حساس؛ با تایپ نام منبع تأیید می‌شود" : approval.kind === "plan" ? "متوسط؛ تا تأیید نکنید چیزی ساخته یا تغییر نمی‌کند" : "متوسط؛ فقط همین اقدام دقیق با تأیید شما اجرا می‌شود"}
+            </span>
+          </div>
+          {approval.undoFa && (
+            <div>
+              <span className="text-muted">راه برگشت: </span>
+              <Fa text={approval.undoFa} />
+            </div>
+          )}
+        </div>
+
         {approval.taintedWarningFa && <p className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px] text-warn">⚠ {approval.taintedWarningFa}</p>}
 
         {pending && (

@@ -7,6 +7,7 @@ import type { DeployPlan } from "../planner/plan";
 import type { Workspace } from "../repo/workspace";
 import type { InjectionFinding } from "../safety/untrusted";
 import type { SreReport } from "../sre/report";
+import type { DomainStatus } from "../tools/domain-tools";
 
 export type ToolKind = "read" | "mutating" | "destructive";
 /** "plan" = an approval gate that changes nothing by itself (propose_deploy_plan). */
@@ -34,6 +35,8 @@ export interface ApprovalRequest {
   /** Env vars whose values the user must type into the card (never seen by the LLM). */
   secretInputs: Array<{ key: string; labelFa: string }>;
   requireTypedConfirmation?: string;
+  /** How this action can be undone, shown before approving. */
+  undoFa?: string;
   requireBudgetOverride?: boolean;
   monthlyCostToman?: number;
   dryRun: boolean;
@@ -81,6 +84,7 @@ type EventBody =
   | { type: "injection_warning"; source: string; findings: InjectionFinding[] }
   | { type: "health"; app: string; health: HealthResult }
   | { type: "sre_report"; report: SreReport }
+  | { type: "domain_status"; status: DomainStatus }
   | { type: "release"; app: string; releaseId: string; state: ReleaseState; port?: number }
   | { type: "summary"; card: SummaryCard }
   | { type: "status"; status: RunStatus; reasonFa?: string }

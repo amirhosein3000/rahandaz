@@ -8,6 +8,8 @@ import type {
   DatabaseInfo,
   DeployInput,
   DiskInfo,
+  DnsRecord,
+  DnsZone,
   DomainInfo,
   EnvVarWrite,
   HealthResult,
@@ -44,7 +46,13 @@ export interface LiaraClient {
   listPlans(): Promise<Plan[]>;
   listDatabases(): Promise<DatabaseInfo[]>;
   listDisks(app: string): Promise<DiskInfo[]>;
-  listDomains(): Promise<DomainInfo[]>;
+  /** Domains attached to an app (spec: GET /v1/domains?project=). */
+  listDomains(app: string): Promise<DomainInfo[]>;
+  /** Details incl. the DNS values to set (spec: GET /v1/domains/{id}/check). */
+  checkDomain(id: string): Promise<DomainInfo>;
+  /** Zone on Liara DNS, or null when the domain is not managed there (dns.yaml: GET /api/v1/zones/{zone}). */
+  getDnsZone(zone: string): Promise<DnsZone | null>;
+  listDnsRecords(zone: string): Promise<DnsRecord[]>;
   appUrl(app: string): string;
   checkHealth(app: string, path?: string): Promise<HealthResult>;
 
@@ -56,6 +64,12 @@ export interface LiaraClient {
   resizeApp(app: string, planId: string): Promise<void>;
   createDatabase(input: CreateDatabaseInput): Promise<{ id: string }>;
   createDisk(app: string, name: string, sizeGb: number): Promise<void>;
+  /** Attach a new domain to an app (spec: POST /v1/domains). */
+  addDomain(app: string, domain: string): Promise<{ id: string }>;
+  /** Issue a free SSL certificate (spec: POST /v1/domains/provision-ssl-certs). */
+  enableSsl(domain: string): Promise<void>;
+  createDnsZone(zone: string): Promise<DnsZone>;
+  createDnsRecord(zone: string, record: DnsRecord): Promise<void>;
 
   // ── destructive (gated by ALLOW_DESTRUCTIVE + named confirmation) ─────
   deleteApp(app: string): Promise<void>;

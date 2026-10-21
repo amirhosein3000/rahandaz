@@ -366,6 +366,7 @@ export class AgentRuntime {
         plan: extras.plan,
         secretInputs: extras.secretInputs ?? [],
         requireTypedConfirmation: decision.kind === "destructive" ? approvalResource : undefined,
+        undoFa: tool.undoFa?.(args),
         requireBudgetOverride: decision.requireBudgetOverride || Boolean(extras.requireBudgetOverride),
         monthlyCostToman: extras.monthlyCostToman ?? monthlyCost ?? undefined,
         dryRun: this.deps.config.dryRun,
@@ -461,6 +462,24 @@ export class AgentRuntime {
     return result;
   }
 
+  /** app name → repository origin, persisted in DATA_DIR/apps.json. */
+  appRepos(): Record<string, string> {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(this.deps.config.dataDir, "apps.json"), "utf8")) as Record<string, string>;
+    } catch {
+      return {};
+    }
+  }
+
+  private rememberAppRepo(app: string, origin: string) {
+    const all = { ...this.appRepos(), [app]: origin };
+    try {
+      fs.writeFileSync(path.join(this.deps.config.dataDir, "apps.json"), JSON.stringify(all, null, 2));
+    } catch {
+      // best-effort convenience
+    }
+  }
+
   /** Append what was really changed (and how to undo it) to a stop message: no silent partial state. */
   private withApplied(run: RunState, textFa: string): string {
     if (!run.applied.length) return `${textFa}\nهیچ تغییری روی منابع اعمال نشده است.`;
@@ -521,6 +540,10 @@ export class AgentRuntime {
     this.emit(rec, { type: "assistant", text });
     run.summary = buildSummary(run, rec.events, { status, textFa: text, durationMs: Date.now() - rec.startedAtMs, dryRun: this.deps.config.dryRun });
     this.emit(rec, { type: "summary", card: run.summary });
+    // Remember where a deployed app's code lives, so "publish a new version" is one click later.
+    if (run.appName && run.workspace && run.releases.length && !this.deps.config.dryRun) {
+      this.rememberAppRepo(run.appName, run.workspace.origin);
+    }
     this.setStatus(rec, status);
     this.deps.audit.append({ actor: "system", action: "run_finished", runId: run.id, result: status === "completed" ? "ok" : status === "stopped" ? "info" : "error", detail: run.summary.outcome });
     try {

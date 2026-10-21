@@ -23,6 +23,9 @@ export function Header({ state, connected, active }: { state: ConsoleState | nul
           <Link href="/audit" className={`rounded-md px-2.5 py-1 ${active === "audit" ? "bg-surface-2 font-semibold" : "text-muted hover:text-ink"}`}>
             گزارش ممیزی
           </Link>
+          <Link href="/limits" className="rounded-md px-2.5 py-1 text-muted hover:text-ink">
+            قابلیت‌ها
+          </Link>
         </nav>
         <div className="scroll-thin order-last flex w-full items-center gap-1.5 overflow-x-auto sm:order-none sm:ms-auto sm:w-auto sm:flex-wrap sm:overflow-visible">
           {m && (

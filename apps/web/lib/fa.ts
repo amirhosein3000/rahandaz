@@ -33,11 +33,12 @@ export function faTime(iso: string): string {
   }
 }
 
+/** Risk tiers as the user sees them: what runs by itself, what waits for a yes, what needs a second yes. */
 export const KIND_FA: Record<string, string> = {
-  read: "فقط‌خواندنی",
-  mutating: "تغییر منابع",
-  destructive: "حساس",
-  plan: "نقشه",
+  read: "خودکار · بی‌خطر",
+  mutating: "نیازمند تأیید",
+  destructive: "حساس · تأیید دوم",
+  plan: "نیازمند تأیید",
 };
 
 export const STATUS_FA: Record<string, string> = {

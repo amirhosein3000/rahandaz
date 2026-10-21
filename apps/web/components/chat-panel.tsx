@@ -2,12 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { AgentEvent } from "@rahandaz/core";
 import { faText } from "@/lib/fa";
-import { postJson, type ConsoleState, type RunView } from "@/lib/use-console";
+import { postJson, type RunView } from "@/lib/use-console";
 import { ApprovalCard } from "./approval-card";
+import { DomainCard } from "./domain-card";
+import { SreReportCard } from "./sre-report";
 import { SummaryCard } from "./summary-card";
 import { Button } from "./ui";
 
-export function ChatPanel({ run, state }: { run: RunView | null; state: ConsoleState | null }) {
+export function ChatPanel({ run }: { run: RunView | null }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,9 @@ export function ChatPanel({ run, state }: { run: RunView | null; state: ConsoleS
     if (!message.trim()) return;
     setBusy(true);
     setError(null);
-    const res = await postJson("/api/runs", { message });
+    // A finished conversation continues (e.g. "done" after changing nameservers); otherwise start a new one.
+    const finished = run && (run.status === "completed" || run.status === "failed" || run.status === "stopped");
+    const res = finished ? await postJson(`/api/runs/${run.id}/message`, { text: message }) : await postJson("/api/runs", { message });
     setBusy(false);
     if (!res.ok) setError(res.errorFa ?? "خطا");
     else setText("");
@@ -33,7 +37,6 @@ export function ChatPanel({ run, state }: { run: RunView | null; state: ConsoleS
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-        {!run && <Welcome state={state} onPick={start} />}
         {run?.events.map((e) => <Message key={e.seq} e={e} resolved={resolved} />)}
         {run && (run.status === "running") && (
           <div className="flex items-center gap-2 text-[13px] text-muted">
@@ -62,7 +65,7 @@ export function ChatPanel({ run, state }: { run: RunView | null; state: ConsoleS
               }
             }}
             rows={2}
-            placeholder="لینک مخزن GitHub را بفرستید، یا بپرسید «چرا demo-shop از کار افتاده؟»"
+            placeholder={run && (run.status === "running" || run.status === "awaiting_approval") ? "راهی در حال کار است…" : "ادامه‌ی گفتگو؛ مثلاً «انجام دادم» یا یک سؤال تازه"}
             className="min-h-11 flex-1 resize-none rounded-lg border border-line bg-bg px-3 py-2 text-sm leading-6 outline-none placeholder:text-muted focus:border-accent"
             aria-label="پیام به ایجنت"
           />
@@ -71,40 +74,6 @@ export function ChatPanel({ run, state }: { run: RunView | null; state: ConsoleS
           </Button>
         </div>
       </form>
-    </div>
-  );
-}
-
-function Welcome({ state, onPick }: { state: ConsoleState | null; onPick: (m: string) => void }) {
-  const fixtures = state?.fixtures.filter((f) => f.failure) ?? [];
-  return (
-    <div className="space-y-4 py-2">
-      <div className="space-y-2">
-        <h1 className="text-xl font-extrabold leading-9">لینک مخزن را بدهید؛ راهی آن را روی لیارا بالا می‌آورد و سالم نگه می‌دارد.</h1>
-        <p className="text-[13.5px] leading-7 text-muted">
-          تحلیل کد، نقشه‌ی استقرار با هزینه، دیپلوی بعد از تأیید شما، و اگر خطا داد: پیدا کردن ریشه با استناد به مستندات لیارا، پیشنهاد اصلاح به‌صورت diff، و دیپلوی دوباره. هیچ تغییری بدون تأیید شما انجام نمی‌شود.
-        </p>
-      </div>
-      {fixtures.length > 0 && (
-        <div>
-          <div className="mb-2 text-xs text-muted">برای امتحان، یک مخزن نمونه‌ی خراب انتخاب کنید:</div>
-          <div className="flex flex-wrap gap-2">
-            {fixtures.map((f) => (
-              <button
-                key={f.name}
-                type="button"
-                onClick={() => onPick(`این مخزن را روی لیارا دیپلوی کن: https://github.com/rahandaz-demo/${f.name}`)}
-                className={`rounded-full border px-3 py-1.5 text-[13px] transition hover:border-accent hover:text-accent ${f.hero ? "border-accent/50 bg-accent-soft text-accent" : "border-line bg-surface"}`}
-              >
-                {f.titleFa}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <button type="button" onClick={() => onPick("چرا demo-shop کند است؟ وضعیتش را بررسی کن.")} className="text-[13px] text-info underline-offset-4 hover:underline">
-        یا: «چرا demo-shop کند است؟»
-      </button>
     </div>
   );
 }
@@ -134,6 +103,10 @@ function Message({ e, resolved }: { e: AgentEvent; resolved: Map<string, "approv
       );
     case "approval_required":
       return <ApprovalCard approval={e.approval} resolved={resolved.get(e.approval.id) ?? null} />;
+    case "sre_report":
+      return <SreReportCard report={e.report} />;
+    case "domain_status":
+      return <DomainCard status={e.status} />;
     case "summary":
       return <SummaryCard card={e.card} />;
     case "error":

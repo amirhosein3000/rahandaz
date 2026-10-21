@@ -18,6 +18,8 @@ import type {
   DatabaseInfo,
   DeployInput,
   DiskInfo,
+  DnsRecord,
+  DnsZone,
   DomainInfo,
   EnvVarWrite,
   HealthResult,
@@ -81,6 +83,10 @@ interface MockApp {
 }
 
 const LINE_MS = 280;
+/** Simulated time for a registrar nameserver change to take effect (demo pace). */
+const NS_PROPAGATION_MS = 20_000;
+/** Placeholder nameservers in mock mode; real ones come from the DNS API (zone.nameServers). */
+const MOCK_NS = ["ns1.mock-liara-dns.example", "ns2.mock-liara-dns.example"];
 const DEPLOY_MS = 2500;
 
 export class MockLiaraClient implements LiaraClient {
@@ -88,6 +94,8 @@ export class MockLiaraClient implements LiaraClient {
   private apps = new Map<string, MockApp>();
   private releases = new Map<string, MockRelease>();
   private databases: DatabaseInfo[] = [];
+  private domains = new Map<string, { id: string; name: string; app: string; ssl: boolean }>();
+  private zones = new Map<string, { createdAt: number; records: DnsRecord[] }>();
   private seq = 0;
   private readonly scale: number;
   private readonly now: () => number;
@@ -316,8 +324,47 @@ export class MockLiaraClient implements LiaraClient {
     return [];
   }
 
-  async listDomains(): Promise<DomainInfo[]> {
-    return [];
+  async listDomains(app: string): Promise<DomainInfo[]> {
+    return [...this.domains.values()].filter((d) => d.app === app).map((d) => this.domainInfo(d));
+  }
+
+  async checkDomain(id: string): Promise<DomainInfo> {
+    const d = [...this.domains.values()].find((x) => x.id === id);
+    if (!d) throw new LiaraApiError("domain not found", 404, `/v1/domains/${id}/check`, false);
+    return this.domainInfo(d);
+  }
+
+  private domainInfo(d: { id: string; name: string; app: string; ssl: boolean }): DomainInfo {
+    // Verified once the zone is ACTIVE (nameservers point at the DNS service) and both records exist.
+    const zone = this.zones.get(d.name);
+    const records = zone?.records ?? [];
+    const target = `${d.app}.liara.run`;
+    const pointed = zone && this.zoneStatus(zone) === "ACTIVE" && records.some((r) => (r.type === "ALIAS" || r.type === "CNAME") && r.name === "@" && r.contents.some((c) => c.host === target));
+    return {
+      id: d.id,
+      name: d.name,
+      app: d.app,
+      status: pointed ? "ACTIVE" : "PENDING",
+      certificatesStatus: d.ssl ? "ISSUED" : "NONE",
+      cnameTarget: target,
+      verificationCode: `liara-site-verification=${d.id}`,
+    };
+  }
+
+  private zoneStatus(z: { createdAt: number }): string {
+    // Stands in for the registrar (IRNIC) nameserver change propagating.
+    return this.now() - z.createdAt >= NS_PROPAGATION_MS * this.scale ? "ACTIVE" : "PENDING";
+  }
+
+  async getDnsZone(zone: string): Promise<DnsZone | null> {
+    const z = this.zones.get(zone);
+    if (!z) return null;
+    const status = this.zoneStatus(z);
+    return { name: zone, status, nameServers: MOCK_NS, currentNameServers: status === "ACTIVE" ? MOCK_NS : ["ns1.old-registrar.example", "ns2.old-registrar.example"] };
+  }
+
+  async listDnsRecords(zone: string): Promise<DnsRecord[]> {
+    return [...(this.zones.get(zone)?.records ?? [])];
   }
 
   appUrl(app: string): string {
@@ -379,6 +426,32 @@ export class MockLiaraClient implements LiaraClient {
 
   async createDisk(app: string, _name: string, _sizeGb: number): Promise<void> {
     this.requireApp(app);
+  }
+
+  async addDomain(app: string, domain: string): Promise<{ id: string }> {
+    this.requireApp(app);
+    if (this.domains.has(domain)) throw new LiaraApiError(`domain ${domain} already exists`, 409, "/v1/domains", false);
+    const id = this.nextId("dom");
+    this.domains.set(domain, { id, name: domain, app, ssl: false });
+    return { id };
+  }
+
+  async enableSsl(domain: string): Promise<void> {
+    const d = this.domains.get(domain);
+    if (!d) throw new LiaraApiError("domain not found", 404, "/v1/domains/provision-ssl-certs", false);
+    if (this.domainInfo(d).status !== "ACTIVE") throw new LiaraApiError("domain records are not verified yet", 400, "/v1/domains/provision-ssl-certs", false);
+    d.ssl = true;
+  }
+
+  async createDnsZone(zone: string): Promise<DnsZone> {
+    if (!this.zones.has(zone)) this.zones.set(zone, { createdAt: this.now(), records: [] });
+    return (await this.getDnsZone(zone))!;
+  }
+
+  async createDnsRecord(zone: string, record: DnsRecord): Promise<void> {
+    const z = this.zones.get(zone);
+    if (!z) throw new LiaraApiError("zone not found", 404, `/api/v1/zones/${zone}/dns-records`, false);
+    z.records.push(record);
   }
 
   // ── destructive ──────────────────────────────────────────────

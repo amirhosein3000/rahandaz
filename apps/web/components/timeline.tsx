@@ -15,7 +15,8 @@ type Extra =
   | { kind: "health"; ok: boolean; url: string; status?: number; latencyMs?: number; error?: string }
   | { kind: "release"; state: string; releaseId: string }
   | { kind: "injection"; source: string; rules: string[]; excerpt: string }
-  | { kind: "blocked"; reasonFa: string };
+  | { kind: "blocked"; reasonFa: string }
+  | { kind: "sre"; score: number; status: string; headline: string; resolved?: boolean };
 
 interface Step {
   callId: string;
@@ -76,6 +77,9 @@ function buildSteps(events: AgentEvent[]): Step[] {
         break;
       case "diagnosis":
         current?.extras.push({ kind: "diagnosis", diagnoses: e.diagnoses });
+        break;
+      case "sre_report":
+        current?.extras.push({ kind: "sre", score: e.report.compare?.scoreAfter ?? e.report.score, status: e.report.status, headline: e.report.headlineFa, resolved: e.report.compare?.resolved });
         break;
       case "docs":
         current?.extras.push({ kind: "docs", query: e.query, hits: e.hits });
@@ -232,6 +236,13 @@ function ExtraView({ x }: { x: Extra }) {
         <div className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px] text-warn">
           <div className="font-semibold">⚠ متن شبیه دستور به هوش مصنوعی در {x.source}؛ اجرا نشد، فقط داده است.</div>
           <div className="mt-1 font-mono text-[11px] opacity-80" dir="auto">“{x.excerpt}”</div>
+        </div>
+      );
+    case "sre":
+      return (
+        <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] ${x.status === "healthy" || x.resolved ? "bg-ok-soft text-ok" : x.status === "down" ? "bg-bad-soft text-bad" : "bg-warn-soft text-warn"}`}>
+          <span className="font-extrabold">{faNum(x.score)}/۱۰۰</span>
+          <Fa text={x.headline} className="min-w-0" />
         </div>
       );
     case "blocked":

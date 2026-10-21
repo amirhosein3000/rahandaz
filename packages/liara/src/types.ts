@@ -131,9 +131,34 @@ export interface DiskInfo {
 }
 
 export interface DomainInfo {
+  id: string;
   name: string;
   app?: string;
+  /** Liara's domain status string (e.g. pending until DNS points at Liara). */
   status: string;
+  certificatesStatus?: string;
+  /** Target for the ALIAS/CNAME record (from GET /v1/domains/{id}/check). */
+  cnameTarget?: string;
+  /** Value for the TXT ownership record. */
+  verificationCode?: string;
+}
+
+/** A zone on Liara's DNS service (dns.yaml `Zone`). */
+export interface DnsZone {
+  name: string;
+  /** CREATING | PENDING (nameservers not pointed yet) | ACTIVE | DELETING */
+  status: string;
+  /** What to set at the registrar (e.g. IRNIC). */
+  nameServers: string[];
+  currentNameServers: string[];
+}
+
+export interface DnsRecord {
+  name: string;
+  type: "A" | "AAAA" | "TXT" | "CNAME" | "ALIAS" | "MX";
+  ttl?: number;
+  /** CNAME/ALIAS: { host }, TXT: { text }, A: { ip } (shapes from @liara/cli zone record create). */
+  contents: Array<Record<string, string>>;
 }
 
 export interface HealthResult {

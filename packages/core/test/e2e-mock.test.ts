@@ -96,3 +96,14 @@ describe("plan UX", () => {
     expect(approval.plan?.env.map((e) => e.valueRef)).toEqual(["example:APP_NAME", "example:APP_ENV", "example:APP_DEBUG", "example:DB_CONNECTION"]);
   });
 });
+
+describe("publish a new version", () => {
+  it("redeploys onto the existing app with a deploy-only plan, then verifies health", async () => {
+    const app = makeApp();
+    const run = await runToEnd(app, "نسخه‌ی جدید https://github.com/rahandaz-demo/demo-shop را روی اپ demo-shop منتشر کن");
+    expect(run.plan?.appExists).toBe(true);
+    expect(run.plan?.actions.map((a) => a.tool)).toEqual(["deploy_app"]);
+    expect(run.summary?.outcome).toBe("healthy");
+    expect(run.releases).toHaveLength(1);
+  });
+});

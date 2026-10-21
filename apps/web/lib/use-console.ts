@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentEvent, ApprovalRequest, RunStatus } from "@rahandaz/core";
 
+export type ChaosId = "missing_env" | "wrong_port" | "memory_pressure" | "db_down";
+
 export interface ConsoleState {
   modes: {
     liara: "mock" | "real";
@@ -17,9 +19,9 @@ export interface ConsoleState {
     allowedApps: string[];
     docs: { chunks: number; dense: boolean };
   };
-  apps: Array<{ name: string; status: string; platform: string; health: { ok: boolean; status?: number; url: string; error?: string } | null }>;
+  apps: Array<{ name: string; status: string; platform: string; repo: string | null; health: { ok: boolean; status?: number; url: string; error?: string; latencyMs?: number } | null }>;
   fixtures: Array<{ name: string; titleFa: string; hero?: boolean; failure: string | null }>;
-  chaos: Array<{ id: "missing_env" | "wrong_port"; titleFa: string; descriptionFa: string }>;
+  chaos: Array<{ id: ChaosId; titleFa: string; descriptionFa: string }>;
 }
 
 export interface RunView {

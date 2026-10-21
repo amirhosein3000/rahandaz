@@ -159,7 +159,7 @@ export function buildSreReport(s: SreSignals, previous?: SreReport): SreReport {
     [...s.plans].sort((a, b) => a.monthlyToman - b.monthlyToman).find((p) => (by === "ram" ? p.ramMb > (plan?.ramMb ?? 0) : p.cpu > (plan?.cpu ?? 0)));
   const resize = (target: Plan | undefined, why: string): ProposedAction | null =>
     target && plan
-      ? { tool: "resize_app", args: { app: s.app.name, planId: target.id }, titleFa: `تغییر پلن از ${plan.labelFa} به ${target.labelFa} (${why})`, costDeltaToman: target.monthlyToman - plan.monthlyToman }
+      ? { tool: "resize_app", args: { app: s.app.name, planId: target.id }, titleFa: `ارتقای پلن از ${plan.labelFa} به ${target.labelFa} (${why})`, costDeltaToman: target.monthlyToman - plan.monthlyToman }
       : null;
 
   for (const d of s.diagnoses) {
@@ -193,7 +193,7 @@ export function buildSreReport(s: SreSignals, previous?: SreReport): SreReport {
           "اگر دیتابیس روی لیارا نیست، دسترسی شبکه و فایروال سرویس دیتابیس را چک کنید.",
           "متغیرهای اتصال (مثل DATABASE_URL یا DB_HOST) را با آدرس واقعی دیتابیس مقایسه کنید.",
         ],
-        docsQuery: "اتصال به دیتابیس برنامه خطای ECONNREFUSED",
+        docsQuery: `اتصال به دیتابیس ${dbKind(dbCluster.sample)} در برنامه‌های ${DOCS_PLATFORM[s.app.platform] ?? s.app.platform}`,
       });
     }
     if (exceptionCluster) {
@@ -318,7 +318,19 @@ export function buildSreReport(s: SreSignals, previous?: SreReport): SreReport {
   const status: SreReport["status"] = down ? "down" : symptoms.length ? "degraded" : "healthy";
 
   const top = H[0];
-  const symptomFa = down ? "اپ از دسترس خارج است" : symptoms.includes("errors") ? "اپ خطای ۵۰۰ می‌دهد" : symptoms.includes("slow") ? "اپ کند است" : symptoms.includes("resources") ? "منابع اپ رو به اتمام است" : "اپ سالم است";
+  // What the user feels first: down > very slow > errors > slow > resources.
+  const verySlow = p50 !== null && p50 >= 1500;
+  const symptomFa = down
+    ? "اپ از دسترس خارج است"
+    : verySlow
+      ? `اپ کند است${symptoms.includes("errors") ? " و گاهی خطا می‌دهد" : ""}`
+      : symptoms.includes("errors")
+        ? "اپ خطای ۵۰۰ می‌دهد"
+        : symptoms.includes("slow")
+          ? "اپ کند است"
+          : symptoms.includes("resources")
+            ? "منابع اپ رو به اتمام است"
+            : "اپ سالم است";
   const headlineFa = top && status !== "healthy" ? `${symptomFa}؛ محتمل‌ترین علت: ${top.titleFa}.` : top ? `${symptomFa}. پیشنهاد: ${top.titleFa}.` : `${symptomFa}؛ مشکلی پیدا نشد.`;
 
   // ── what the API could not tell us ────────────────────────────
@@ -347,6 +359,17 @@ export function buildSreReport(s: SreSignals, previous?: SreReport): SreReport {
   };
   if (previous) report.compare = compareReports(previous, report);
   return report;
+}
+
+const DOCS_PLATFORM: Record<string, string> = { node: "NodeJS", next: "NextJS", laravel: "Laravel", php: "PHP", python: "Python", django: "Django", flask: "Flask", go: "Go", docker: "Docker", dotnet: ".NET" };
+
+/** Which database the failing connection points at, from its port. */
+function dbKind(sample: string): string {
+  if (/:5432(?!\d)|postgres/i.test(sample)) return "PostgreSQL";
+  if (/:3306(?!\d)|mysql|mariadb/i.test(sample)) return "MySQL";
+  if (/:27017(?!\d)|mongo/i.test(sample)) return "MongoDB";
+  if (/:6379(?!\d)|redis/i.test(sample)) return "Redis";
+  return "";
 }
 
 /** Before/after: did the corrective action work? */

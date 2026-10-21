@@ -20,6 +20,8 @@ import type {
   DatabaseInfo,
   DeployInput,
   DiskInfo,
+  DnsRecord,
+  DnsZone,
   DomainInfo,
   EnvVarWrite,
   HealthResult,
@@ -38,6 +40,8 @@ export interface RealLiaraClientOptions {
   baseUrl?: string;
   /** Default `https://{app}.liara.run` (UNVERIFIED: docs convention, not in the spec). */
   appUrlTemplate?: string;
+  /** Liara DNS service base URL. */
+  dnsBaseUrl?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
 }
@@ -73,9 +77,9 @@ export class RealLiaraClient implements LiaraClient {
   private async request<T = Json>(
     method: PlannedCall["method"],
     pathAndQuery: string,
-    init: { json?: unknown; form?: FormData; timeoutMs?: number } = {},
+    init: { json?: unknown; form?: FormData; timeoutMs?: number; base?: string } = {},
   ): Promise<T> {
-    const url = new URL(this.baseUrl + pathAndQuery);
+    const url = new URL((init.base ?? this.baseUrl) + pathAndQuery);
     // Team scoping, as the CLI does it (empty = personal account).
     url.searchParams.set("teamID", this.opts.teamId ?? "");
 
@@ -282,12 +286,38 @@ export class RealLiaraClient implements LiaraClient {
     }));
   }
 
-  async listDomains(): Promise<DomainInfo[]> {
-    const data = await this.request<{ domains?: Json[] }>("GET", "/v1/domains");
-    return (data.domains ?? []).map((d) => ({
-      name: String(d.name ?? ""),
-      app: String((d.project as Json | undefined)?.project_id ?? "") || undefined,
-      status: String(d.status ?? ""),
+  async listDomains(app: string): Promise<DomainInfo[]> {
+    const data = await this.request<{ domains?: Json[] }>("GET", `/v1/domains?project=${encodeURIComponent(app)}`);
+    return (data.domains ?? []).map((d) => toDomain(d));
+  }
+
+  async checkDomain(id: string): Promise<DomainInfo> {
+    const data = await this.request<{ domain?: Json }>("GET", `/v1/domains/${encodeURIComponent(id)}/check`);
+    return toDomain(data.domain ?? { _id: id });
+  }
+
+  private get dnsBase(): string {
+    // CLI-SOURCE uses https://dns-service.iran.liara.ir; dns.yaml says https://dns-service.liara.ir (UNVERIFIED which is current).
+    return (this.opts.dnsBaseUrl ?? "https://dns-service.iran.liara.ir").replace(/\/$/, "");
+  }
+
+  async getDnsZone(zone: string): Promise<DnsZone | null> {
+    try {
+      const data = await this.request<{ data?: Json }>("GET", `/api/v1/zones/${encodeURIComponent(zone)}`, { base: this.dnsBase });
+      return data.data ? toZone(data.data) : null;
+    } catch (err) {
+      if (err instanceof LiaraApiError && err.status === 404) return null;
+      throw err;
+    }
+  }
+
+  async listDnsRecords(zone: string): Promise<DnsRecord[]> {
+    const data = await this.request<{ data?: Json[] }>("GET", `/api/v1/zones/${encodeURIComponent(zone)}/dns-records`, { base: this.dnsBase });
+    return (data.data ?? []).map((r) => ({
+      name: String(r.name ?? ""),
+      type: String(r.type ?? "A") as DnsRecord["type"],
+      ttl: typeof r.ttl === "number" ? r.ttl : undefined,
+      contents: Array.isArray(r.contents) ? (r.contents as Array<Record<string, string>>) : [],
     }));
   }
 
@@ -357,6 +387,26 @@ export class RealLiaraClient implements LiaraClient {
     await this.send(LiaraRequests.createDisk(app, name, sizeGb));
   }
 
+  async addDomain(app: string, domain: string): Promise<{ id: string }> {
+    const data = await this.send<{ domain?: Json }>(LiaraRequests.addDomain(app, domain));
+    return { id: String(data.domain?._id ?? "") };
+  }
+
+  async enableSsl(domain: string): Promise<void> {
+    await this.send(LiaraRequests.enableSsl(domain));
+  }
+
+  async createDnsZone(zone: string): Promise<DnsZone> {
+    const call = LiaraRequests.createDnsZone(zone);
+    const data = await this.request<{ data?: Json }>("POST", call.path, { json: call.body, base: this.dnsBase });
+    return toZone(data.data ?? { name: zone, status: "CREATING" });
+  }
+
+  async createDnsRecord(zone: string, record: DnsRecord): Promise<void> {
+    const call = LiaraRequests.createDnsRecord(zone, record);
+    await this.request("POST", call.path, { json: call.body, base: this.dnsBase });
+  }
+
   // ── destructive ──────────────────────────────────────────────
 
   async deleteApp(app: string): Promise<void> {
@@ -366,6 +416,27 @@ export class RealLiaraClient implements LiaraClient {
   async setScale(app: string, scale: 0 | 1): Promise<void> {
     await this.send(LiaraRequests.scale(app, scale));
   }
+}
+
+function toDomain(d: Json): DomainInfo {
+  return {
+    id: String(d._id ?? ""),
+    name: String(d.name ?? ""),
+    app: String((d.project as Json | undefined)?.project_id ?? "") || undefined,
+    status: String(d.status ?? ""),
+    certificatesStatus: typeof d.certificatesStatus === "string" ? d.certificatesStatus : undefined,
+    cnameTarget: typeof d.CNameRecord === "string" ? d.CNameRecord : undefined,
+    verificationCode: typeof d.verificationCode === "string" ? d.verificationCode : undefined,
+  };
+}
+
+function toZone(z: Json): DnsZone {
+  return {
+    name: String(z.name ?? ""),
+    status: String(z.status ?? ""),
+    nameServers: Array.isArray(z.nameServers) ? z.nameServers.map(String) : [],
+    currentNameServers: Array.isArray(z.currentNameServers) ? z.currentNameServers.map(String) : [],
+  };
 }
 
 function toApp(p: Json): LiaraApp {

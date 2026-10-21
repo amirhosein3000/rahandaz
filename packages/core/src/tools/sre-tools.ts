@@ -80,7 +80,9 @@ export const sreCheckTool = defineTool({
 
     // Ground the top causes in Liara's own docs.
     for (const h of report.hypotheses.slice(0, 2)) {
-      h.docs = await ctx.docs.search(h.docsQuery, 1, { platform: app.platform }).catch(() => []);
+      // App-level causes cite platform (PaaS) pages; only a database cause may cite database pages.
+      const sections = h.id === "upstream_unreachable" ? ["paas", "dbaas"] : ["paas", "references"];
+      h.docs = await ctx.docs.search(h.docsQuery, 1, { platform: app.platform, sections }).catch(() => []);
       for (const d of h.docs) if (!ctx.run.docsCited.some((x) => x.url === d.url)) ctx.run.docsCited.push(d);
     }
     if (!a.afterChange || !ctx.run.sreReports[a.app]) ctx.run.sreReports[a.app] = report;

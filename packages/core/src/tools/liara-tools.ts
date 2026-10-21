@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { LiaraApiError, LiaraRequests, TERMINAL_RELEASE_STATES, findPlan, type BuildLogLine, type Release } from "@rahandaz/liara";
 import { z } from "zod";
+import { toman } from "../format/fa";
 import { fingerprint } from "../policy/fingerprint";
 import { SecretVault } from "../safety/vault";
 import { redeployFor } from "./repo-tools";
@@ -332,7 +333,7 @@ export const resizeAppTool = defineTool({
     const to = findPlan(plans, a.planId);
     if (!from || !to) return {};
     const delta = to.monthlyToman - from.monthlyToman;
-    return { titleFa: `تغییر پلن ${a.app} از ${from.labelFa} به ${to.labelFa} (${delta >= 0 ? "+" : "−"}${Math.abs(delta).toLocaleString("en-US")} تومان در ماه)` };
+    return { titleFa: `تغییر پلن ${a.app} از ${from.labelFa} به ${to.labelFa} (${delta >= 0 ? "افزایش" : "کاهش"} ${toman(Math.abs(delta))} در ماه)` };
   },
   resource: (a) => a.app,
   undoFa: (a) => `برگرداندن پلن ${a.app} به پلن قبلی (resize_app)`,

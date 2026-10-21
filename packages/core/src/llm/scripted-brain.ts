@@ -40,7 +40,7 @@ export class ScriptedBrain implements LlmProvider {
     });
     const userText = lastUser >= 0 ? messages[lastUser]!.content ?? "" : "";
     const steps = collectSteps(messages.slice(lastUser + 1));
-    const d = decide(userText, steps);
+    const d = decide(userText, steps, collectSteps(messages));
     if ("final" in d) return { message: { role: "assistant", content: d.final }, usage: { promptTokens: 0, completionTokens: 0 } };
     const call: ToolCall = { id: `call_${++this.seq}`, type: "function", function: { name: d.call, arguments: JSON.stringify(d.args) } };
     return { message: { role: "assistant", content: d.say ?? null, tool_calls: [call] }, usage: { promptTokens: 0, completionTokens: 0 } };
@@ -86,13 +86,26 @@ function safeParse(s: string): Record<string, unknown> {
   }
 }
 
-function decide(userText: string, steps: Step[]): Decision {
+function decide(userText: string, steps: Step[], allSteps: Step[] = steps): Decision {
   const last = steps[steps.length - 1];
   if (last?.denied) return { final: `باشه، «${last.summary}». ${describeDenied(last)} هیچ تغییر دیگری اعمال نکردم.` };
   if (last?.blocked) return { final: `این کار انجام نشد: ${last.summary}\nاگر واقعاً لازم است، باید خودتان آگاهانه تنظیمات ایمنی را تغییر دهید.` };
 
+  if (LIMITS_RE.test(userText)) {
+    const last = steps[steps.length - 1];
+    if (!last) return { call: "explain_limitations", args: {}, say: "فهرست دقیق کارهایی که از طریق API لیارا ممکن است و نیست را می‌آورم." };
+    if (last.name === "explain_limitations") return { final: limitsText(last.data.capabilities ?? []) };
+  }
   const repo = findRepoRef(userText);
-  if (repo) return deployFlow(repo, steps);
+  if (repo) return deployFlow(repo, steps, userText);
+  const domain = domainIn(userText);
+  if (domain && DOMAIN_INTENT.test(userText)) return domainFlow(userText, steps, { domain, app: userText.match(/اپ\s+([a-z0-9][a-z0-9-]{2,31})/)?.[1] });
+  // Follow-up in the same conversation ("I changed the nameservers") continues the domain flow.
+  const prevDomain = [...allSteps].reverse().find((s) => s.name === "domain_status");
+  const domainTurn = steps.length ? ["domain_status", "add_domain", "setup_dns", "enable_ssl"].includes(steps[0]!.name) : DONE_RE.test(userText);
+  if (prevDomain && domainTurn) {
+    return domainFlow(userText, steps, { domain: String(prevDomain.args.domain), app: String(prevDomain.args.app) });
+  }
   if (INCIDENT_RE.test(userText) || steps.some((s) => s.name === "list_apps" || s.name === "sre_check")) return operateFlow(userText, steps);
   return {
     final:
@@ -110,7 +123,7 @@ function describeDenied(step: Step): string {
 
 // ── deploy: analyse → plan → apply → heal → verify ─────────────
 
-function deployFlow(repo: string, steps: Step[]): Decision {
+function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
   const last = steps[steps.length - 1];
   if (!last) return { call: "acquire_repo", args: { source: repo }, say: "مخزن را دریافت و تحلیل می‌کنم." };
   if (!last.ok && !["wait_for_release", "check_health"].includes(last.name)) {
@@ -140,7 +153,10 @@ function deployFlow(repo: string, steps: Step[]): Decision {
       const risks = (a.warnings ?? []).filter((w: { code: string }) => w.code !== "injection_text");
       if (risks.length) lines.push(`ریسک‌ها: ${risks.map((w: { messageFa: string }) => w.messageFa).join(" ")}`);
       lines.push("نقشه‌ی استقرار را برای تأیید شما آماده می‌کنم.");
-      return { call: "propose_deploy_plan", args: {}, say: lines.join("\n") };
+      // "publish a new version on app X": deploy onto that existing app instead of a new one.
+      const target = repoUserText.match(/اپ\s+([a-z0-9][a-z0-9-]{2,31})/)?.[1];
+      if (target) lines.splice(lines.length - 1, 1, `نسخه‌ی جدید را روی اپ موجود ${target} منتشر می‌کنم؛ نقشه را برای تأیید آماده می‌کنم.`);
+      return { call: "propose_deploy_plan", args: target ? { appName: target } : {}, say: lines.join("\n") };
     }
 
     case "propose_deploy_plan":
@@ -307,6 +323,67 @@ function verifySummary(r: any): string {
   if (c.changesFa?.length) lines.push(...c.changesFa.map((x: string) => `• ${x}`));
   if (!c.resolved && r.hypotheses?.[0]) lines.push(`قدم بعدی پیشنهادی: ${r.hypotheses[0].titleFa}`);
   return lines.join("\n");
+}
+
+// ── domain: "connect example.ir to my app" ─────────────────────
+
+const DOMAIN_IN_TEXT = /\b((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:ir|com|net|org|io|dev|app|co|shop|site|online|info|xyz|me|tech))\b/i;
+const DOMAIN_INTENT = /(دامنه|domain|ایرنیک|irnic|nic\.ir)/i;
+const DONE_RE = /(انجام دادم|انجام شد|تمام شد|زدم|عوض کردم|done|ok|اوکی|دوباره بررسی|چک کن)/i;
+
+function domainIn(text: string): string | null {
+  const m = text.match(DOMAIN_IN_TEXT)?.[1]?.toLowerCase();
+  if (!m || /(^|\.)(liara\.run|github\.com|nic\.ir|liara\.ir)$/.test(m)) return null;
+  return m;
+}
+
+function domainFlow(userText: string, steps: Step[], ctx: { domain: string; app?: string }): Decision {
+  const last = steps[steps.length - 1];
+  if (!last) {
+    if (ctx.app) return { call: "domain_status", args: { app: ctx.app, domain: ctx.domain }, say: `وضعیت دامنه‌ی ${ctx.domain} را بررسی می‌کنم.` };
+    return { call: "list_apps", args: {}, say: `برای اتصال ${ctx.domain}، اول اپ‌ها را پیدا می‌کنم.` };
+  }
+  if (!last.ok) return { final: `این قدم انجام نشد: ${last.summary}${last.error ? `\n(${last.error})` : ""}\n${appliedSoFar(steps)}` };
+  switch (last.name) {
+    case "list_apps": {
+      const apps = (last.data.apps ?? []) as Array<{ name: string }>;
+      if (!apps.length) return { final: "اپی پیدا نکردم؛ اول باید پروژه را مستقر کنیم. لینک گیت‌هاب را بفرستید." };
+      const app = apps.find((a) => userText.includes(a.name))?.name ?? apps[0]!.name;
+      return { call: "domain_status", args: { app, domain: ctx.domain } };
+    }
+    case "domain_status": {
+      const st = last.data;
+      if (st.next.tool) return { call: st.next.tool, args: { app: st.app, domain: st.domain }, say: st.next.textFa };
+      return { final: domainChecklist(st) };
+    }
+    case "add_domain":
+    case "setup_dns":
+    case "enable_ssl":
+      return { call: "domain_status", args: { app: last.args.app, domain: last.args.domain } };
+    default:
+      return { final: "تمام شد." };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function domainChecklist(st: any): string {
+  const lines = [st.next.who === "none" ? `✓ ${st.next.textFa}` : `اتصال ${st.domain} به ${st.app}:`];
+  for (const s of st.steps) {
+    lines.push(`${s.done ? "✓" : s.who === "user" ? "👤" : "•"} ${s.titleFa}${s.done ? "" : ` (${s.who === "user" ? "با شما" : "با من"})`}`);
+    if (!s.done && s.values?.length && s.who === "user") for (const v of s.values) lines.push(`    ${v.labelFa}: ${v.value}`);
+  }
+  if (st.next.who === "user") lines.push("", st.next.textFa);
+  return lines.join("\n");
+}
+
+const LIMITS_RE = /(محدودیت|چه کارهایی (می‌توانی|میتونی|نمی)|نمی‌توانی|نمیتونی|rollback|برگرداندن ریلیز|limitation)/i;
+
+function limitsText(caps: Array<{ titleFa: string; status: string; howFa: string }>): string {
+  const group = (st: string, title: string) => {
+    const xs = caps.filter((c) => c.status === st);
+    return xs.length ? [title, ...xs.map((c) => `• ${c.titleFa}: ${c.howFa}`)] : [];
+  };
+  return [...group("api", "از طریق API لیارا انجام می‌دهم:"), "", ...group("partial", "به‌صورت محدود:"), "", ...group("none", "از طریق API ممکن نیست (کار شما):")].join("\n");
 }
 
 // ── final messages ─────────────────────────────────────────────

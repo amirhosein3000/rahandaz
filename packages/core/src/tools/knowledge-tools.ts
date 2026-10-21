@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { diagnose } from "../healer/diagnose";
+import { capabilitiesFor } from "../limitations";
 import { defineTool } from "./types";
 
 export const searchDocsTool = defineTool({
@@ -74,6 +75,23 @@ export const diagnoseFailureTool = defineTool({
         maxHealAttempts: ctx.config.maxHealAttempts,
       },
       untrusted: diagnoses.map((d) => ({ source: "app_log" as const, label: `evidence for ${d.rule}`, text: d.evidence.join("\n") })),
+    };
+  },
+});
+
+export const explainLimitationsTool = defineTool({
+  name: "explain_limitations",
+  description:
+    "List what can be done through Liara's real APIs, what is only partial, and what is impossible (with what the user must do instead). Use it whenever the user asks for something you cannot do via the API, so you can say so clearly.",
+  kind: "read",
+  schema: z.object({ topic: z.enum(["deploy", "config", "monitoring", "troubleshooting", "domain", "data", "account"]).optional() }),
+  titleFa: () => "بررسی قابلیت‌ها و محدودیت‌های API لیارا",
+  async execute(a) {
+    const caps = capabilitiesFor(a.topic);
+    return {
+      ok: true,
+      summaryFa: `${caps.filter((c) => c.status === "api").length} قابلیت کامل، ${caps.filter((c) => c.status === "partial").length} محدود، ${caps.filter((c) => c.status === "none").length} ناممکن از طریق API`,
+      data: { capabilities: caps },
     };
   },
 });

@@ -11,7 +11,10 @@ export async function GET(req: Request) {
   const r = rz();
   const { config } = r;
   const apps = (await r.liara.listApps().catch(() => [])).filter((a) => appAllowed(config, a.name)).slice(0, 8);
-  const appsWithHealth = await Promise.all(apps.map(async (a) => ({ ...a, health: await r.liara.checkHealth(a.name).catch(() => null) })));
+  const repos = r.runtime.appRepos();
+  // The pre-deployed mock demo app has a known source too (maps to fixtures/demo-shop in mock mode).
+  if (config.liaraMode === "mock") repos["demo-shop"] ??= "https://github.com/rahandaz-demo/demo-shop";
+  const appsWithHealth = await Promise.all(apps.map(async (a) => ({ ...a, repo: repos[a.name] ?? null, health: await r.liara.checkHealth(a.name).catch(() => null) })));
   let fixtures: Array<{ name: string; titleFa: string; hero?: boolean; failure: string | null }> = [];
   try {
     fixtures = JSON.parse(fs.readFileSync(path.join(config.fixturesDir, "fixtures.json"), "utf8")).fixtures;

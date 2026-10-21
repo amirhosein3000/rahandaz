@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { faDuration, faNum } from "@/lib/fa";
-import { postJson, type ConsoleState, type RunView } from "@/lib/use-console";
+import { postJson, type ChaosId, type ConsoleState, type RunView } from "@/lib/use-console";
 import { Badge, Button, Card, Dot } from "./ui";
 
 /** «خرابش کن»: the judge breaks a healthy app; the timer runs until the agent has it healthy again. */
 export function BreakPanel({ state, runs }: { state: ConsoleState | null; runs: RunView[] }) {
   const target = state?.apps.find((a) => a.name === "demo-shop") ?? state?.apps[0];
-  const [scenario, setScenario] = useState<"missing_env" | "wrong_port" | null>(null);
+  const [scenario, setScenario] = useState<ChaosId | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -70,6 +70,23 @@ export const LiaraRequests = {
     };
   },
 
+  addDomain(app: string, domain: string): PlannedCall {
+    return { method: "POST", path: "/v1/domains", body: { name: domain, project: app, type: "PROJECT" } };
+  },
+
+  enableSsl(domain: string): PlannedCall {
+    return { method: "POST", path: "/v1/domains/provision-ssl-certs", body: { domain } };
+  },
+
+  /** DNS service calls go to a different host (see NOTES.md). */
+  createDnsZone(zone: string): PlannedCall {
+    return { method: "POST", path: "/api/v1/zones", body: { name: zone }, note: "dns-service" };
+  },
+
+  createDnsRecord(zone: string, record: { name: string; type: string; contents: unknown[] }): PlannedCall {
+    return { method: "POST", path: `/api/v1/zones/${enc(zone)}/dns-records`, body: record, note: "dns-service" };
+  },
+
   createDisk(app: string, name: string, sizeGb: number): PlannedCall {
     return { method: "POST", path: `/v1/projects/${enc(app)}/disks`, body: { name, size: sizeGb } };
   },

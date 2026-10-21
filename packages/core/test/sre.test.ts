@@ -55,7 +55,7 @@ describe("SRE agent", () => {
     expect(before!.hypotheses[0]!.docs?.length).toBeGreaterThan(0);
     expect(approvals).toEqual(["resize_app"]);
     const card = run.approvals.find((a) => a.tool === "resize_app")!;
-    expect(card.titleFa).toContain("+170,000");
+    expect(card.titleFa).toContain("افزایش ۱۷۰٬۰۰۰ تومان");
 
     expect(after!.compare?.resolved).toBe(true);
     expect(after!.compare!.scoreAfter).toBeGreaterThan(after!.compare!.scoreBefore);

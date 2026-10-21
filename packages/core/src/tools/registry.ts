@@ -15,8 +15,9 @@ import {
   stopAppTool,
   waitForReleaseTool,
 } from "./liara-tools";
-import { diagnoseFailureTool, searchDocsTool } from "./knowledge-tools";
+import { diagnoseFailureTool, explainLimitationsTool, searchDocsTool } from "./knowledge-tools";
 import { sreCheckTool } from "./sre-tools";
+import { addDomainTool, domainStatusTool, enableSslTool, setupDnsTool } from "./domain-tools";
 import { acquireRepoTool, analyseRepoTool, applyFixTool, proposeDeployPlanTool } from "./repo-tools";
 import type { AnyTool } from "./types";
 
@@ -29,6 +30,11 @@ export const ALL_TOOLS: AnyTool[] = [
   searchDocsTool,
   diagnoseFailureTool,
   sreCheckTool,
+  explainLimitationsTool,
+  domainStatusTool,
+  addDomainTool,
+  setupDnsTool,
+  enableSslTool,
   listAppsTool,
   getAppStatusTool,
   getAppLogsTool,
