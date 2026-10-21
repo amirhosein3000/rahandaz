@@ -246,15 +246,25 @@ function detectCodePort(files: Files): { port: number; file: string; snippet: st
 
 function detectEnv(files: Files, platform: Platform): EnvVarNeed[] {
   const found = new Map<string, EnvVarNeed>();
+  const withExample = new Set<string>();
   const add = (name: string, source: string) => {
     if (RUNTIME_ENV.has(name) || found.has(name)) return;
-    found.set(name, { name, source, secret: isSecretName(name), suggestedRef: suggestRef(name, platform) });
+    const secret = isSecretName(name);
+    let suggestedRef = suggestRef(name, platform);
+    // A non-secret key with a non-empty example value (APP_ENV=production) defaults to that value.
+    if (suggestedRef === "user" && !secret && withExample.has(name)) suggestedRef = "example";
+    found.set(name, { name, source, secret, suggestedRef });
   };
   const example = files.get(".env.example") ?? files.get(".env.sample") ?? files.get("env.example");
   if (example) {
-    for (const line of example.split(/\r?\n/)) {
+    const lines = example.split(/\r?\n/);
+    for (const line of lines) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(\S?)/i);
+      if (m?.[2] && m[2] !== "#") withExample.add(m[1]!);
+    }
+    for (const line of lines) {
       const m = line.match(/^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=/i);
-      // Only the NAME is kept; example values never enter the analysis.
+      // Only the NAME (and whether an example value exists) is kept; values never enter the analysis.
       if (m) add(m[1]!, ".env.example");
     }
   }

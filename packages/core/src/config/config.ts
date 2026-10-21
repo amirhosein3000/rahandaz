@@ -19,6 +19,10 @@ export interface RahandazConfig {
   allowedApps: string[];
   maxSteps: number;
   maxHealAttempts: number;
+  /** LLM token budget per run (prompt + completion); the run stops when exceeded. */
+  maxRunTokens: number;
+  /** Default wall-clock limit for one tool call (tools that wait declare their own). */
+  toolTimeoutMs: number;
   llm: { baseUrl: string; apiKey: string; model: string; timeoutMs: number };
   embed: { baseUrl: string; apiKey: string; model: string } | null;
   liara: { apiToken: string; teamId: string; region: string; baseUrl: string };
@@ -78,6 +82,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RahandazConfig
     allowedApps: (env.ALLOWED_APPS ?? "*").split(",").map((s) => s.trim()).filter(Boolean),
     maxSteps: num(env.MAX_AGENT_STEPS, 40),
     maxHealAttempts: num(env.MAX_HEAL_ATTEMPTS, 3),
+    maxRunTokens: num(env.MAX_RUN_TOKENS, 400_000),
+    toolTimeoutMs: num(env.TOOL_TIMEOUT_MS, 180_000),
     llm: {
       baseUrl: llmBaseUrl.replace(/\/$/, ""),
       apiKey: env.LLM_API_KEY ?? "",

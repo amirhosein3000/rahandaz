@@ -25,6 +25,7 @@ import type { AnyTool, ToolContext, ToolResult } from "../tools/types";
 import { systemPrompt } from "./prompt";
 import { buildSummary } from "./summary";
 import type { AgentEvent, AgentEventInput, ApprovalRequest, GateKind, RunState, RunStatus, RunTrigger } from "./types";
+export type { AppliedAction } from "./types";
 
 export interface RuntimeDeps {
   config: RahandazConfig;
@@ -109,6 +110,7 @@ export class AgentRuntime {
       approved: {},
       tainted: false,
       lastHealthOk: null,
+      applied: [],
       summary: null,
     };
     const rec: RunRecord = {
@@ -253,7 +255,12 @@ export class AgentRuntime {
           continue;
         }
         if (run.steps >= this.deps.config.maxSteps) {
-          this.finish(rec, "failed", `به سقف ${this.deps.config.maxSteps} گام رسیدم و متوقف شدم تا در حلقه نمانم. وضعیت فعلی در تایم‌لاین هست.`);
+          this.finish(rec, "failed", this.withApplied(run, `به سقف ${this.deps.config.maxSteps} گام رسیدم و متوقف شدم تا در حلقه نمانم.`));
+          return;
+        }
+        const tokens = run.usage.promptTokens + run.usage.completionTokens;
+        if (tokens >= this.deps.config.maxRunTokens) {
+          this.finish(rec, "failed", this.withApplied(run, `بودجه‌ی توکن این اجرا (${this.deps.config.maxRunTokens}) تمام شد و متوقف شدم.`));
           return;
         }
         run.steps += 1;
@@ -264,7 +271,7 @@ export class AgentRuntime {
             tools: this.registry.schemas({ allowDestructive: this.deps.config.allowDestructive }),
           });
         } catch (err) {
-          this.finish(rec, "failed", `ارتباط با مدل زبانی برقرار نشد (${(err as Error).message}). هیچ اقدام نیمه‌کاره‌ای در جریان نیست؛ می‌توانید دوباره امتحان کنید.`);
+          this.finish(rec, "failed", this.withApplied(run, `ارتباط با مدل زبانی برقرار نشد (${(err as Error).message}). هیچ فراخوانی در حال اجرا نیست؛ می‌توانید دوباره امتحان کنید.`));
           return;
         }
         if (result.usage) {
@@ -282,7 +289,7 @@ export class AgentRuntime {
         return;
       }
     } catch (err) {
-      this.finish(rec, "failed", `خطای داخلی: ${this.deps.redactor.redact((err as Error).message)}`);
+      this.finish(rec, "failed", this.withApplied(run, `خطای داخلی: ${this.deps.redactor.redact((err as Error).message)}`));
     } finally {
       rec.driving = false;
     }
@@ -379,7 +386,7 @@ export class AgentRuntime {
     // execute
     const failures = rec.failedCalls.get(fp) ?? 0;
     if (failures >= MAX_SAME_FAILURE) {
-      this.finish(rec, "failed", `فراخوانی ${tool.name} با همین ورودی ${failures} بار شکست خورد؛ برای جلوگیری از حلقه متوقف شدم.`);
+      this.finish(rec, "failed", this.withApplied(run, `فراخوانی ${tool.name} با همین ورودی ${failures} بار شکست خورد؛ برای جلوگیری از حلقه متوقف شدم.`));
       return "stop";
     }
     if (decision.viaApproval) delete run.approved[fp]; // single use
@@ -404,8 +411,15 @@ export class AgentRuntime {
     }
 
     let result: ToolResult;
+    const timeoutMs = tool.timeoutMs ?? this.deps.config.toolTimeoutMs;
+    let timer: NodeJS.Timeout | undefined;
     try {
-      result = await tool.execute(args, ctx);
+      result = await Promise.race([
+        tool.execute(args, ctx),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`timed out after ${Math.round(timeoutMs / 1000)}s`)), timeoutMs);
+        }),
+      ]);
     } catch (err) {
       const e = err as Error;
       const retryable = err instanceof LiaraApiError ? err.retryable : false;
@@ -414,6 +428,11 @@ export class AgentRuntime {
         summaryFa: err instanceof LiaraApiError ? `خطای API لیارا (${err.status || "شبکه"})` : `خطا: ${e.message}`,
         error: `${e.message}${retryable ? " (retryable: you may try once more later)" : ""}`,
       };
+    } finally {
+      clearTimeout(timer);
+    }
+    if (result.ok && changesState) {
+      run.applied.push({ tool: tool.name, titleFa: tool.titleFa(args), resource, ts: new Date().toISOString(), undoFa: tool.undoFa?.(args) ?? "" });
     }
     if (changesState || kind === "plan") {
       this.deps.audit.append({
@@ -441,11 +460,17 @@ export class AgentRuntime {
     return result;
   }
 
+  /** Append what was really changed (and how to undo it) to a stop message: no silent partial state. */
+  private withApplied(run: RunState, textFa: string): string {
+    if (!run.applied.length) return `${textFa}\nهیچ تغییری روی منابع اعمال نشده است.`;
+    return [textFa, "تغییرهایی که تا این لحظه اعمال شده‌اند:", ...run.applied.map((a) => `• ${a.titleFa}${a.undoFa ? ` (برای برگرداندن: ${a.undoFa})` : ""}`)].join("\n");
+  }
+
   private malformed(rec: RunRecord, call: ToolCall, reason: string): "done" | "stop" {
     rec.state.malformedCalls += 1;
     this.pushToolMessage(rec, call, { ok: false, summaryFa: "فراخوانی نامعتبر", error: `${reason}. Check the tool schema and try again.` });
     if (rec.state.malformedCalls > MAX_MALFORMED) {
-      this.finish(rec, "failed", "مدل زبانی چند بار پشت سر هم فراخوانی نامعتبر داد؛ برای ایمنی متوقف شدم.");
+      this.finish(rec, "failed", this.withApplied(rec.state, "مدل زبانی چند بار پشت سر هم فراخوانی نامعتبر داد؛ برای ایمنی متوقف شدم."));
       return "stop";
     }
     return "done";
@@ -487,6 +512,8 @@ export class AgentRuntime {
     if (run.status === "completed" || run.status === "failed" || run.status === "stopped") return;
     run.queue = [];
     run.pendingApprovalId = null;
+    // Unused pre-approvals die with the run; a follow-up message starts from zero.
+    run.approved = {};
     for (const a of run.approvals) if (a.status === "pending") a.status = "denied";
     run.finishedAt = new Date().toISOString();
     const text = this.deps.redactor.redact(textFa);

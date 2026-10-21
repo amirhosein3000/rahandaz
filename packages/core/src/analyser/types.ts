@@ -1,7 +1,8 @@
 import type { Platform } from "@rahandaz/liara";
 import type { InjectionFinding } from "../safety/untrusted";
 
-export type SuggestedRef = "user" | "generate:secret" | "generate:laravel_app_key";
+/** "example" = use the non-secret value from the repo's .env.example (resolved server-side, never sent to the LLM). */
+export type SuggestedRef = "user" | "example" | "generate:secret" | "generate:laravel_app_key";
 
 export interface EnvVarNeed {
   name: string;

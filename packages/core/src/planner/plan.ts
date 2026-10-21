@@ -78,9 +78,14 @@ export function buildDeployPlan(input: {
     .filter((e) => !existingApp?.envKeys.includes(e.name))
     .map((e) => ({
       key: e.name,
-      valueRef: e.suggestedRef === "user" ? `user:${e.name}` : e.suggestedRef,
+      valueRef: e.suggestedRef === "user" ? `user:${e.name}` : e.suggestedRef === "example" ? `example:${e.name}` : e.suggestedRef,
       secret: e.secret,
-      sourceFa: e.suggestedRef === "user" ? `از ${e.source}، مقدار را شما وارد می‌کنید` : `از ${e.source}، به‌صورت امن ساخته می‌شود`,
+      sourceFa:
+        e.suggestedRef === "user"
+          ? `از ${e.source}، مقدار را شما وارد می‌کنید`
+          : e.suggestedRef === "example"
+            ? "مقدار نمونه‌ی همان .env.example مخزن"
+            : `از ${e.source}، به‌صورت امن ساخته می‌شود`,
     }));
 
   const costLines = [{ labelFa: `پلن ${plan.labelFa}: ${plan.cpu} هسته، ${plan.ramMb >= 1024 ? `${plan.ramMb / 1024} گیگ` : `${plan.ramMb} مگ`} رم`, toman: plan.monthlyToman }];

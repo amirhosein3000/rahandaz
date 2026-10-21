@@ -39,6 +39,7 @@ export function buildSummary(
     pricesVerified: run.plan?.pricesVerified ?? false,
     docs: run.docsCited.slice(0, 4).map((d) => ({ title: d.title, url: d.url })),
     ignoredInjection: run.tainted,
+    applied: run.applied.map((a) => ({ titleFa: a.titleFa, undoFa: a.undoFa })),
     textFa: opts.textFa,
   };
 }

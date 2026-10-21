@@ -2,6 +2,36 @@
 
 Newest first. Each entry: what changed, what works, what's next.
 
+## 2026-10-21 (3): prompt 1, verify and harden (part 1, without a Liara token)
+
+**Fixed after an SRE-style review**
+- CSRF: every console POST must be JSON and same-origin (`checkWriteRequest`). Before, a cross-site
+  `text/plain` form could have carried an approval using cached Basic-auth credentials.
+- Open console: `proxy.ts` puts Basic auth on pages + API; a production console without
+  `CONSOLE_PASSWORD` refuses all changes (override: `ALLOW_OPEN_CONSOLE=true`).
+- Stale approvals: unused plan pre-approvals now die with the run.
+- Limits: `MAX_RUN_TOKENS` token budget, `TOOL_TIMEOUT_MS` per tool call (waits declare their own).
+- Partial deploys: every applied change is recorded with an undo hint; stop messages and the summary
+  card list them. Before, the mock brain claimed "nothing half-done" even after `create_app`.
+- Rate limits / 5xx while following a build are retried with back-off (reads only, never POSTs).
+- Upload size cap 256 MiB (same as the CLI).
+- UX: non-secret env vars default to the repo's `.env.example` value (`example:KEY`). The Laravel plan
+  used to ask the user to type 4 harmless values.
+- Console: phone layout (compact header, panels 78dvh), bidi isolation of Latin runs inside Persian text
+  (`components/fa.tsx`), wrapping evidence, applied-changes box on failed summaries.
+
+**Proven with tests (99 total)**: no mutating call without approval; destructive unreachable without
+`ALLOW_DESTRUCTIVE` + typed name; DRY_RUN executes nothing; secrets absent from LLM messages, events,
+audit; instructions planted in README, code comments and app logs are flagged and powerless; malformed
+tool calls, LLM outage, step and token limits, repeated failures, Liara 5xx mid-deploy, 429 during a build,
+hung tool calls; CSRF guard.
+
+**Checked by hand in the browser**: 375×812 (no horizontal overflow; logs wrap), 1280×800 (panels
+fill the viewport).
+
+**Still open (need the user)**: real-mode dry run + 2 fixtures live on the test account (needs
+`LIARA_API_TOKEN`, and the user's go-ahead for `DRY_RUN=false`); real LLM run; real Bale bot; Docker build.
+
 ## 2026-10-21 (2): M4–M6: console, CLI, chat bot, Docker, docs
 
 **Done**

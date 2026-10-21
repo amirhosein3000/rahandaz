@@ -8,12 +8,12 @@ export function Header({ state, connected, active }: { state: ConsoleState | nul
   const m = state?.modes;
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
-      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+      <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-4 gap-y-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
         <Link href="/" className="flex items-center gap-2.5">
           <Logo />
           <div className="leading-tight">
             <div className="text-[17px] font-extrabold">راه‌انداز</div>
-            <div className="text-[11px] text-muted">ایجنت استقرار و نگهداری · ساخته‌شده برای هکاتون لیارا</div>
+            <div className="hidden text-[11px] text-muted sm:block">ایجنت استقرار و نگهداری · ساخته‌شده برای هکاتون لیارا</div>
           </div>
         </Link>
         <nav className="flex items-center gap-1 text-[13px]">
@@ -24,7 +24,7 @@ export function Header({ state, connected, active }: { state: ConsoleState | nul
             گزارش ممیزی
           </Link>
         </nav>
-        <div className="ms-auto flex flex-wrap items-center gap-1.5">
+        <div className="scroll-thin order-last flex w-full items-center gap-1.5 overflow-x-auto sm:order-none sm:ms-auto sm:w-auto sm:flex-wrap sm:overflow-visible">
           {m && (
             <>
               <Badge tone={m.liara === "real" ? "accent" : "neutral"} title="LIARA_MODE">{m.liara === "real" ? "لیارای واقعی" : "لیارای شبیه‌سازی"}</Badge>

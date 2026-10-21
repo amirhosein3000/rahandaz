@@ -58,6 +58,8 @@ export interface SummaryCard {
   pricesVerified: boolean;
   docs: Array<{ title: string; url: string }>;
   ignoredInjection: boolean;
+  /** Every change actually applied in this run, with its undo hint. */
+  applied: Array<{ titleFa: string; undoFa: string }>;
   textFa: string;
 }
 
@@ -84,6 +86,15 @@ type EventBody =
 
 export type AgentEvent = EventBody & { seq: number; ts: string; runId: string };
 export type AgentEventInput = EventBody;
+
+/** A change that really happened (not dry-run), with how to undo it. */
+export interface AppliedAction {
+  tool: string;
+  titleFa: string;
+  resource: string | null;
+  ts: string;
+  undoFa: string;
+}
 
 export interface RunState {
   id: string;
@@ -115,5 +126,6 @@ export interface RunState {
   approved: Record<string, string>;
   tainted: boolean;
   lastHealthOk: boolean | null;
+  applied: AppliedAction[];
   summary: SummaryCard | null;
 }

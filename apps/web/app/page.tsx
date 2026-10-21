@@ -13,7 +13,7 @@ export default function ConsolePage() {
   const [tab, setTab] = useState<"chat" | "timeline">("chat");
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col lg:h-dvh">
       <Header state={state} connected={connected} active="console" />
 
       <div className="mx-auto flex w-full max-w-[1500px] min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-4">
@@ -59,11 +59,11 @@ export default function ConsolePage() {
           ))}
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <section className={`min-h-0 overflow-hidden rounded-xl border border-line bg-surface-2/40 ${tab === "chat" ? "flex" : "hidden"} flex-col lg:flex`} aria-label="گفتگو">
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[minmax(0,1fr)]">
+          <section className={`h-[78dvh] min-h-0 overflow-hidden rounded-xl border border-line bg-surface-2/40 lg:h-auto ${tab === "chat" ? "flex" : "hidden"} flex-col lg:flex`} aria-label="گفتگو">
             <ChatPanel run={current} state={state} />
           </section>
-          <section className={`scroll-thin min-h-0 overflow-y-auto rounded-xl border border-line bg-surface ${tab === "timeline" ? "block" : "hidden"} lg:block`} aria-label="تایم‌لاین">
+          <section className={`scroll-thin h-[78dvh] min-h-0 overflow-y-auto rounded-xl border border-line bg-surface lg:h-auto ${tab === "timeline" ? "block" : "hidden"} lg:block`} aria-label="تایم‌لاین">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface/95 px-4 py-2.5 backdrop-blur">
               <span className="text-sm font-bold">تایم‌لاین زنده</span>
               <span className="text-[11.5px] text-muted">ابزارها · لاگ‌ها · تشخیص · تغییرات</span>

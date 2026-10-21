@@ -79,14 +79,21 @@ Every tool has a static `kind`: `read` | `mutating` | `destructive` | `plan` (an
   plan pre-approves exactly its listed actions; approving a fix pre-approves exactly its redeploy.
 - `DRY_RUN`: the executor returns `tool.plannedCalls(args)` instead of executing anything non-read.
 - Secrets: the LLM passes `valueRef`s (`user:KEY`, `generate:secret`, `generate:laravel_app_key`,
-  `literal:VALUE` for non-secret keys only). Values are typed into approval cards, stored in the run's
+  `example:KEY` = the repo's `.env.example` value for non-secret keys, `literal:VALUE` for non-secret keys only). Values are typed into approval cards, stored in the run's
   `SecretVault`, registered with the `Redactor`, and resolved only inside `set_env_vars.execute`.
   Everything leaving the core (LLM messages, events, audit, run snapshots) passes `redact()`.
 - Untrusted text (logs, repo files, docs snippets) reaches the LLM only inside
   `<untrusted source="…">` (closing tags defanged) and is scanned; findings → `injection_warning`
   event + audit + `run.tainted` (shown on later approval cards).
-- Loop limits: `MAX_AGENT_STEPS`, max 3 malformed tool calls, max 3 identical failing calls,
-  `MAX_HEAL_ATTEMPTS` applied fixes. Every stop explains itself in Persian.
+- Loop limits: `MAX_AGENT_STEPS`, `MAX_RUN_TOKENS`, `TOOL_TIMEOUT_MS` per call (waiting tools declare their
+  own `timeoutMs`), max 3 malformed tool calls, max 3 identical failing calls, `MAX_HEAL_ATTEMPTS` applied
+  fixes. Transient Liara errors (429/5xx/network) are retried for reads only, never for POSTs.
+- No silent partial state: every applied change is recorded in `run.applied` with an `undoFa` hint
+  (tools define `undoFa`); every stop message and the summary card list them.
+- Pre-approvals are cleared when a run finishes; a follow-up message starts with none.
+- Web: `apps/web/proxy.ts` puts Basic auth on every page/API when `CONSOLE_PASSWORD` is set;
+  `checkWriteRequest()` (lib/server.ts) requires JSON + same-origin for every POST (CSRF), and a
+  production console without a password refuses all changes unless `ALLOW_OPEN_CONSOLE=true`.
 
 ## How to add a tool
 

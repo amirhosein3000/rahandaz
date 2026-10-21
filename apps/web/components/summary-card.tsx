@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import type { SummaryCard as Summary } from "@rahandaz/core";
-import { faDuration, faNum, faText, OUTCOME_FA, toman } from "@/lib/fa";
+import { faDuration, faNum, OUTCOME_FA, toman } from "@/lib/fa";
+import { Fa } from "./fa";
 import { Button, Card, Logo } from "./ui";
 
 /** End-of-run card. Built from run state on the server, not from model text. */
@@ -47,13 +48,13 @@ export function SummaryCard({ card }: { card: Summary }) {
         {card.rootCauseFa && (
           <p>
             <span className="text-muted">ریشه‌ی مشکل: </span>
-            {faText(card.rootCauseFa)}
+            <Fa text={card.rootCauseFa} />
           </p>
         )}
         {card.fixesFa.length > 0 && (
           <ul className="space-y-0.5">
             {card.fixesFa.map((f, i) => (
-              <li key={i}>✓ {faText(f)}</li>
+              <li key={i}>✓ <Fa text={f} /></li>
             ))}
           </ul>
         )}
@@ -77,7 +78,20 @@ export function SummaryCard({ card }: { card: Summary }) {
             ))}
           </div>
         )}
-        {card.ignoredInjection && <p className="text-[12px] text-warn">در مسیر کار، متن‌هایی شبیه دستور به هوش مصنوعی دیده شد که اجرا نشدند.</p>}
+        {card.outcome !== "healthy" && card.applied.length > 0 && (
+          <div className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px]">
+            <div className="mb-1 font-semibold text-warn">تغییرهایی که اعمال شده و راه برگرداندنشان</div>
+            <ul className="space-y-1">
+              {card.applied.map((a, i) => (
+                <li key={i}>
+                  • <Fa text={a.titleFa} />
+                  {a.undoFa && <span className="text-muted"> ← <Fa text={a.undoFa} /></span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {card.ignoredInjection &&<p className="text-[12px] text-warn">در مسیر کار، متن‌هایی شبیه دستور به هوش مصنوعی دیده شد که اجرا نشدند.</p>}
         <div className="pt-1">
           <Button
             variant="secondary"

@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
 import type { AgentEvent, Diagnosis, DocHit, RepoAnalysis } from "@rahandaz/core";
-import { faNum, faText, faTime, KIND_FA } from "@/lib/fa";
+import { faNum, faTime, KIND_FA } from "@/lib/fa";
 import type { RunView } from "@/lib/use-console";
 import { DiffView, LogBlock } from "./code";
+import { Fa } from "./fa";
 import { Badge, Dot, Spinner } from "./ui";
 
 type Extra =
@@ -132,14 +133,14 @@ export function Timeline({ run }: { run: RunView | null }) {
             {s.status === "running" ? <Spinner /> : <Dot tone={s.status === "ok" ? "ok" : s.status === "fail" || s.status === "blocked" ? "bad" : s.status === "waiting" ? "accent" : s.status === "dry" ? "info" : "neutral"} pulse={s.status === "waiting"} />}
           </span>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[13.5px] font-semibold leading-6">{faText(s.titleFa)}</span>
+            <Fa className="min-w-0 text-[13.5px] font-semibold leading-6 [overflow-wrap:anywhere]" text={s.titleFa} />
             <Badge tone={s.kind === "destructive" ? "bad" : s.kind === "read" ? "neutral" : "accent"}>{KIND_FA[s.kind] ?? s.kind}</Badge>
             {s.status === "waiting" && <Badge tone="accent">منتظر تأیید</Badge>}
             {s.status === "blocked" && <Badge tone="bad">مسدود</Badge>}
             {s.status === "dry" && <Badge tone="info">DRY_RUN</Badge>}
             <span className="ms-auto text-[11px] text-muted">{faTime(s.ts)}</span>
           </div>
-          {s.summaryFa && <p className={`mt-0.5 text-[13px] ${s.status === "fail" ? "text-bad" : "text-muted"}`}>{faText(s.summaryFa)}</p>}
+          {s.summaryFa && <p className={`mt-0.5 text-[13px] [overflow-wrap:anywhere] ${s.status === "fail" ? "text-bad" : "text-muted"}`}><Fa text={s.summaryFa} /></p>}
           {s.extras.length > 0 && (
             <div className="mt-2 space-y-2">
               {s.extras.map((x, i) => (
@@ -180,12 +181,12 @@ function ExtraView({ x }: { x: Extra }) {
       return (
         <div className="space-y-2 rounded-lg border border-bad/30 bg-bad-soft/60 p-3">
           <div className="flex items-center gap-2">
-            <span className="text-[13.5px] font-bold text-bad">ریشه‌ی مشکل: {faText(top.titleFa)}</span>
+            <span className="text-[13.5px] font-bold text-bad">ریشه‌ی مشکل: <Fa text={top.titleFa} /></span>
             <Badge tone="neutral">اطمینان {faNum(Math.round(top.confidence * 100))}٪</Badge>
           </div>
-          <p className="text-[13px] leading-6">{faText(top.explanationFa)}</p>
+          <p className="text-[13px] leading-6"><Fa text={top.explanationFa} /></p>
           {top.evidence.length > 0 && (
-            <pre className="scroll-thin overflow-auto rounded bg-code-bg px-2.5 py-1.5 font-mono text-[11.5px] leading-5 text-code-ink">{top.evidence.join("\n")}</pre>
+            <pre className="scroll-thin overflow-auto rounded bg-code-bg px-2.5 py-1.5 font-mono text-[11.5px] leading-5 whitespace-pre-wrap break-all text-code-ink">{top.evidence.join("\n")}</pre>
           )}
           {top.fix?.files.map((f) => (
             <DiffView key={f.path} diff={f.diff} />
@@ -230,7 +231,7 @@ function ExtraView({ x }: { x: Extra }) {
       return (
         <div className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px] text-warn">
           <div className="font-semibold">⚠ متن شبیه دستور به هوش مصنوعی در {x.source}؛ اجرا نشد، فقط داده است.</div>
-          <div className="mt-1 font-mono text-[11px] opacity-80" dir="ltr">“{x.excerpt}”</div>
+          <div className="mt-1 font-mono text-[11px] opacity-80" dir="auto">“{x.excerpt}”</div>
         </div>
       );
     case "blocked":

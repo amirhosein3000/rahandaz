@@ -66,3 +66,13 @@ describe("secret vault", () => {
     expect(() => new SecretVault(new Redactor()).resolve("TOKEN", "user:TOKEN")).toThrow(/no value/);
   });
 });
+
+describe("example: refs", () => {
+  it("resolve from .env.example for non-secret keys only", () => {
+    const vault = new SecretVault(new Redactor());
+    expect(vault.resolve("APP_ENV", "example:APP_ENV", () => "production")).toBe("production");
+    expect(() => SecretVault.validateRef("DB_PASSWORD", "example:DB_PASSWORD")).toThrow(/secret/);
+    expect(() => SecretVault.validateRef("APP_ENV", "example:OTHER")).toThrow();
+    expect(() => vault.resolve("APP_ENV", "example:APP_ENV", () => undefined)).toThrow();
+  });
+});

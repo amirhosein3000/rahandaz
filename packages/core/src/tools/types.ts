@@ -51,6 +51,10 @@ export interface ToolDef<A = Record<string, unknown>> {
   monthlyCost?(args: A, ctx: ToolContext): Promise<number | null>;
   /** Extra approval-card content: diffs, plan, secret inputs. */
   approvalExtras?(args: A, ctx: ToolContext): Promise<Partial<ApprovalRequest>>;
+  /** How to undo this action once applied (Persian), for the run report and emergencies. */
+  undoFa?(args: A): string;
+  /** Override of the default tool timeout (tools that wait for builds/health). */
+  timeoutMs?: number;
   /** Called after a gate approval (plan) to pre-approve its actions. */
   onApproved?(args: A, ctx: ToolContext, approval: ApprovalRequest): Promise<void>;
   execute(args: A, ctx: ToolContext): Promise<ToolResult>;

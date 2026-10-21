@@ -85,3 +85,14 @@ describe("demo flow (mock Liara + scripted brain)", () => {
     expect(ok.ok).toBe(true);
   });
 });
+
+describe("plan UX", () => {
+  it("Laravel plan needs no typing: non-secret env comes from .env.example", async () => {
+    const app = makeApp();
+    const run = app.runtime.startRun({ message: "https://github.com/acme/laravel-no-appkey" });
+    const s = await app.runtime.settled(run.id);
+    const approval = s.approvals.find((a) => a.id === s.pendingApprovalId)!;
+    expect(approval.secretInputs).toEqual([]);
+    expect(approval.plan?.env.map((e) => e.valueRef)).toEqual(["example:APP_NAME", "example:APP_ENV", "example:APP_DEBUG", "example:DB_CONNECTION"]);
+  });
+});

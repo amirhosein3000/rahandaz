@@ -15,7 +15,8 @@ export const acquireRepoTool = defineTool({
     "Clone a public GitHub repository (https://github.com/<owner>/<repo>) or load a demo fixture (fixture:<name>) into this run's private working copy. Read-only for the user's resources.",
   kind: "read",
   schema: z.object({ source: z.string().min(3).max(300).describe("GitHub URL or fixture:<name>") }),
-  titleFa: (a) => `دریافت مخزن ${a.source}`,
+  titleFa: (a) => `دریافت مخزن ${a.source.replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "")}`,
+  timeoutMs: 150_000,
   async execute(args, ctx) {
     const ref = findRepoRef(args.source) ?? args.source;
     const ws = await acquireRepo(ref, {
@@ -139,6 +140,7 @@ export const applyFixTool = defineTool({
   kind: "mutating",
   schema: z.object({ fixId: z.string().min(3).max(60) }),
   titleFa: (a) => `اعمال اصلاح ${a.fixId}`,
+  undoFa: () => "تغییر فقط در نسخه‌ی کاری همین اجراست؛ مخزن اصلی شما دست نخورده",
   resource: (_a, ctx) => ctx.run.appName ?? ctx.run.workspace?.name ?? "workspace",
   plannedCalls: () => [{ method: "PATCH", path: "<working copy>", note: "local file change only; deployed by the next deploy_app" }],
   async approvalExtras(args, ctx) {

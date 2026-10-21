@@ -86,3 +86,11 @@ describe("analyser detectors on synthetic repos", () => {
     expect(a.warnings.map((w) => w.code)).toContain("secret_file_committed");
   });
 });
+
+describe("env defaults from .env.example", () => {
+  it("non-secret keys with an example value default to it; secrets never do", () => {
+    const a = analyseFiles(files({ "composer.json": JSON.stringify({ require: { "laravel/framework": "^11" } }), ".env.example": "APP_ENV=production\nAPP_DEBUG=false\nDB_PASSWORD=changeme\nMAIL_HOST=\n" }));
+    const ref = Object.fromEntries(a.env.map((e) => [e.name, e.suggestedRef]));
+    expect(ref).toEqual({ APP_ENV: "example", APP_DEBUG: "example", DB_PASSWORD: "user", MAIL_HOST: "user" });
+  });
+});

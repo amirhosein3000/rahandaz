@@ -22,8 +22,15 @@ export function listSourceFiles(root: string): string[] {
   return out.sort();
 }
 
+/** The CLI refuses sources above 256 MiB (`MAX_SOURCE_SIZE`, @liara/cli constants); so do we. */
+export const MAX_SOURCE_BYTES = 256 * 1024 * 1024;
+
 export async function createSourceArchive(sourceDir: string, outFile: string): Promise<void> {
   const files = listSourceFiles(sourceDir);
   if (files.length === 0) throw new Error(`No files to upload in ${sourceDir}`);
   await tar.c({ gzip: true, cwd: sourceDir, file: outFile, portable: true }, files);
+  const size = fs.statSync(outFile).size;
+  if (size > MAX_SOURCE_BYTES) {
+    throw new Error(`source archive is ${Math.round(size / 1048576)} MiB; Liara accepts at most 256 MiB (add large files to .gitignore)`);
+  }
 }

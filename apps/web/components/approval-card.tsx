@@ -4,6 +4,7 @@ import type { ApprovalRequest } from "@rahandaz/core";
 import { faNum, faText, KIND_FA, toman } from "@/lib/fa";
 import { postJson } from "@/lib/use-console";
 import { CallsList, DiffView } from "./code";
+import { Fa } from "./fa";
 import { Badge, Button, Card } from "./ui";
 
 export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest; resolved?: "approved" | "denied" | null }) {
@@ -41,7 +42,7 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
       </div>
 
       <div className="space-y-3 p-4 text-sm">
-        <p className="font-semibold leading-7">{faText(approval.titleFa)}</p>
+        <p className="font-semibold leading-7"><Fa text={approval.titleFa} /></p>
 
         {p && (
           <div className="space-y-3">
@@ -88,7 +89,7 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
             {p.warnings.length > 0 && (
               <ul className="space-y-1 rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px] text-warn">
                 {p.warnings.map((w, i) => (
-                  <li key={i}>⚠ {faText(w.messageFa)}</li>
+                  <li key={i}>⚠ <Fa text={w.messageFa} /></li>
                 ))}
               </ul>
             )}
@@ -102,7 +103,7 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
               <div className="mb-1 text-xs text-muted">اقدام‌هایی که بعد از تأیید انجام می‌شود</div>
               <ol className="list-inside list-decimal space-y-0.5 text-[13px]">
                 {p.actions.map((a, i) => (
-                  <li key={i}>{faText(a.titleFa)}</li>
+                  <li key={i}><Fa text={a.titleFa} /></li>
                 ))}
               </ol>
             </div>

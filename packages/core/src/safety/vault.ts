@@ -5,6 +5,8 @@
  *   - `user:NAME`          the user typed the value into an approval card / bot DM
  *   - `generate:secret`    48 random hex chars, generated here
  *   - `generate:laravel_app_key`  "base64:" + 32 random bytes (what `php artisan key:generate` writes)
+ *   - `example:KEY`        the non-secret value in the repo's .env.example (read here, never by the LLM).
+ *                          Refused for secret-looking keys: their example values are placeholders.
  *   - `literal:VALUE`      only for non-secret values the user typed in chat. Refused for secret-looking keys.
  *
  * Values are resolved only inside the tool executor, right before the Liara
@@ -46,17 +48,27 @@ export class SecretVault {
       return;
     }
     if (ref === "generate:secret" || ref === "generate:laravel_app_key") return;
+    if (ref.startsWith("example:")) {
+      if (ref !== `example:${key}`) throw new VaultError(`example reference must name its own key (example:${key})`);
+      if (SECRET_NAME.test(key)) throw new VaultError(`${key} looks secret; its .env.example value is only a placeholder. Use user:${key} or a generate: reference`);
+      return;
+    }
     if (ref.startsWith("literal:")) {
       if (SECRET_NAME.test(key)) throw new VaultError(`${key} looks secret; use user:${key} or a generate: reference, never a literal`);
       if (ref.length > 512) throw new VaultError("literal too long");
       return;
     }
-    throw new VaultError(`unknown value reference "${ref}" for ${key} (use user:NAME, generate:secret, generate:laravel_app_key or literal:VALUE)`);
+    throw new VaultError(`unknown value reference "${ref}" for ${key} (use user:NAME, generate:secret, generate:laravel_app_key, example:NAME or literal:VALUE)`);
   }
 
   /** Resolve a reference to the real value. Only the tool executor calls this. */
-  resolve(key: string, ref: ValueRef): string {
+  resolve(key: string, ref: ValueRef, exampleValue?: (key: string) => string | undefined): string {
     SecretVault.validateRef(key, ref);
+    if (ref.startsWith("example:")) {
+      const v = exampleValue?.(key);
+      if (v === undefined || v === "") throw new VaultError(`no example value for ${key} in .env.example`);
+      return v;
+    }
     let value: string;
     if (ref.startsWith("user:")) {
       const v = this.values.get(ref.slice(5));
@@ -75,7 +87,8 @@ export class SecretVault {
   }
 
   /** Human-readable description for approval cards (never the value). */
-  static describeRef(ref: ValueRef): { kind: "user" | "generated" | "literal"; labelFa: string } {
+  static describeRef(ref: ValueRef): { kind: "user" | "generated" | "literal" | "example"; labelFa: string } {
+    if (ref.startsWith("example:")) return { kind: "example", labelFa: "مقدار نمونه‌ی .env.example مخزن" };
     if (ref.startsWith("user:")) return { kind: "user", labelFa: "مقدار را خودتان وارد می‌کنید (به مدل زبانی نمی‌رسد)" };
     if (ref === "generate:laravel_app_key") return { kind: "generated", labelFa: "کلید تصادفی Laravel، روی سرور ساخته می‌شود" };
     if (ref === "generate:secret") return { kind: "generated", labelFa: "مقدار تصادفی امن، روی سرور ساخته می‌شود" };

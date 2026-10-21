@@ -1,4 +1,6 @@
-import { LiaraRequests, TERMINAL_RELEASE_STATES, findPlan, type BuildLogLine, type Release } from "@rahandaz/liara";
+import fs from "node:fs";
+import path from "node:path";
+import { LiaraApiError, LiaraRequests, TERMINAL_RELEASE_STATES, findPlan, type BuildLogLine, type Release } from "@rahandaz/liara";
 import { z } from "zod";
 import { fingerprint } from "../policy/fingerprint";
 import { SecretVault } from "../safety/vault";
@@ -9,6 +11,19 @@ const appName = z.string().regex(/^[a-z0-9][a-z0-9-]{1,63}$/, "invalid app name"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const pollMs = (ctx: ToolContext, ms: number) => (ctx.liara.mode === "mock" && ctx.config.mockLatencyScale === 0 ? 0 : ms);
+
+/** Retry a read through rate limits / 5xx / network blips (up to 5 tries, backing off). */
+async function retryBlips<T>(fn: () => Promise<T>, ctx: ToolContext): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const transient = !(err instanceof LiaraApiError) || err.retryable;
+      if (!transient || attempt >= 5) throw err;
+      await sleep(pollMs(ctx, 3000 * attempt));
+    }
+  }
+}
 
 // ── read-only ──────────────────────────────────────────────────
 
@@ -83,6 +98,7 @@ export const checkHealthTool = defineTool({
   kind: "read",
   schema: z.object({ app: appName, waitSeconds: z.number().int().min(0).max(180).optional() }),
   titleFa: (a) => `بررسی سلامت ${a.app}`,
+  timeoutMs: 200_000,
   async execute(a, ctx) {
     const deadline = Date.now() + (a.waitSeconds ?? 0) * 1000;
     let health = await ctx.liara.checkHealth(a.app);
@@ -107,28 +123,39 @@ export const waitForReleaseTool = defineTool({
   kind: "read",
   schema: z.object({ app: appName, releaseId: z.string().min(2).max(80), timeoutSeconds: z.number().int().min(10).max(1800).optional() }),
   titleFa: (a) => `پیگیری بیلد ${a.releaseId}`,
+  timeoutMs: 31 * 60_000,
   async execute(a, ctx) {
     const deadline = Date.now() + (a.timeoutSeconds ?? 900) * 1000;
     let cursor: string | undefined;
     const all: BuildLogLine[] = [];
-    let release: Release = await ctx.liara.getRelease(a.app, a.releaseId);
+    let release: Release = await retryBlips(() => ctx.liara.getRelease(a.app, a.releaseId), ctx);
     let lastState = release.state;
     ctx.emit({ type: "release", app: a.app, releaseId: a.releaseId, state: release.state, port: release.port });
+    // A poll that hits a 429/5xx/network blip is retried; 5 in a row ends the wait with a clear error.
+    let blips = 0;
     for (;;) {
-      const lines = await ctx.liara.getBuildLogs(a.releaseId, cursor);
+      let lines: BuildLogLine[];
+      try {
+        lines = await ctx.liara.getBuildLogs(a.releaseId, cursor);
+        release = await ctx.liara.getRelease(a.app, a.releaseId);
+        blips = 0;
+      } catch (err) {
+        if (++blips >= 5) throw err;
+        await sleep(pollMs(ctx, 3000 * blips));
+        continue;
+      }
       if (lines.length) {
         all.push(...lines);
         cursor = lines[lines.length - 1]!.createdAt;
         ctx.emit({ type: "log", source: "build", lines: lines.map((l) => l.line) });
       }
-      release = await ctx.liara.getRelease(a.app, a.releaseId);
       if (release.state !== lastState) {
         lastState = release.state;
         ctx.emit({ type: "release", app: a.app, releaseId: a.releaseId, state: release.state, port: release.port });
       }
       if (TERMINAL_RELEASE_STATES.has(release.state)) {
         // Drain anything logged between the last poll and settling.
-        const rest = await ctx.liara.getBuildLogs(a.releaseId, cursor);
+        const rest = await ctx.liara.getBuildLogs(a.releaseId, cursor).catch(() => []);
         if (rest.length) {
           all.push(...rest);
           ctx.emit({ type: "log", source: "build", lines: rest.map((l) => l.line) });
@@ -161,6 +188,7 @@ export const createAppTool = defineTool({
   schema: z.object({ name: z.string().regex(/^[a-z0-9][a-z0-9-]{2,31}$/), platform: z.string().max(20), planId: z.string().max(40) }),
   titleFa: (a) => `ساخت اپ ${a.name}`,
   resource: (a) => a.name,
+  undoFa: (a) => `حذف اپ ${a.name} از کنسول لیارا (یا delete_app با ALLOW_DESTRUCTIVE)`,
   plannedCalls: (a) => [LiaraRequests.createApp(a)],
   async monthlyCost(a, ctx) {
     return findPlan(await ctx.liara.listPlans(), a.planId)?.monthlyToman ?? null;
@@ -189,11 +217,12 @@ const envVarsSchema = z
 export const setEnvVarsTool = defineTool({
   name: "set_env_vars",
   description:
-    "Set env vars on an app. You never see or send values: pass a valueRef per key — user:KEY (the user types it into the approval card), generate:secret, generate:laravel_app_key, or literal:VALUE for clearly non-secret values. Overwriting an existing key is destructive.",
+    "Set env vars on an app. You never see or send values: pass a valueRef per key — user:KEY (the user types it into the approval card), generate:secret, generate:laravel_app_key, example:KEY (non-secret value from the repo .env.example), or literal:VALUE for clearly non-secret values. Overwriting an existing key is destructive.",
   kind: "mutating",
   schema: z.object({ app: appName, vars: envVarsSchema }),
   titleFa: (a) => `تنظیم متغیرهای ${a.vars.map((v) => v.key).join("، ")} روی ${a.app}`,
   resource: (a) => a.app,
+  undoFa: (a) => `حذف یا برگرداندن ${a.vars.map((v) => v.key).join("، ")} در بخش متغیرهای محیطی اپ ${a.app} در کنسول لیارا`,
   async classify(a, ctx) {
     const app = await ctx.liara.getApp(a.app);
     return app && a.vars.some((v) => app.envKeys.includes(v.key)) ? "destructive" : "mutating";
@@ -221,7 +250,8 @@ export const setEnvVarsTool = defineTool({
   async execute(a, ctx) {
     const missing = SecretVault.missingUserRefs(a.vars, ctx.vault);
     if (missing.length) return { ok: false, summaryFa: `مقدار ${missing.join("، ")} وارد نشده`, error: `missing user values for ${missing.join(", ")}` };
-    const resolved = a.vars.map((v) => ({ key: v.key, value: ctx.vault.resolve(v.key, v.valueRef) }));
+    const examples = readEnvExample(ctx.run.workspace?.dir);
+    const resolved = a.vars.map((v) => ({ key: v.key, value: ctx.vault.resolve(v.key, v.valueRef, (k) => examples.get(k)) }));
     await ctx.liara.setEnvVars(a.app, resolved);
     return {
       ok: true,
@@ -230,6 +260,22 @@ export const setEnvVarsTool = defineTool({
     };
   },
 });
+
+/** Values from the working copy's .env.example (only used for example:KEY refs of non-secret keys). */
+function readEnvExample(dir: string | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!dir) return out;
+  for (const name of [".env.example", ".env.sample", "env.example"]) {
+    const file = path.join(/*turbopackIgnore: true*/ dir, name);
+    if (!fs.existsSync(file)) continue;
+    for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/i);
+      if (m) out.set(m[1]!, m[2]!.replace(/\s+#.*$/, "").replace(/^(["'])(.*)\1$/, "$2").trim());
+    }
+    break;
+  }
+  return out;
+}
 
 /** When these env vars are a proposed fix that needs a rebuild, the redeploy that ships it. */
 function envFixRedeploy(vars: Array<{ key: string }>, ctx: ToolContext) {
@@ -245,6 +291,8 @@ export const deployAppTool = defineTool({
   schema: z.object({ app: appName, port: z.number().int().min(1).max(65535), platform: z.string().max(20) }),
   titleFa: (a) => `دیپلوی ${a.app} روی پورت ${a.port}`,
   resource: (a) => a.app,
+  // Liara keeps previous releases; a rollback endpoint is not in the OpenAPI spec (UNVERIFIED), so point to the console.
+  undoFa: (a) => `فعال‌کردن ریلیز قبلی ${a.app} از بخش «ریلیزها» در کنسول لیارا`,
   plannedCalls: (a, ctx) => LiaraRequests.deploy({ app: a.app, port: a.port, platform: a.platform, sourceDir: ctx.run.workspace?.dir ?? "" }),
   async execute(a, ctx) {
     const ws = ctx.run.workspace;
@@ -264,6 +312,7 @@ export const restartAppTool = defineTool({
   schema: z.object({ app: appName }),
   titleFa: (a) => `ری‌استارت ${a.app}`,
   resource: (a) => a.app,
+  undoFa: () => "نیازی به برگرداندن ندارد",
   plannedCalls: (a) => [LiaraRequests.restart(a.app)],
   async execute(a, ctx) {
     await ctx.liara.restartApp(a.app);
@@ -278,6 +327,7 @@ export const resizeAppTool = defineTool({
   schema: z.object({ app: appName, planId: z.string().max(40) }),
   titleFa: (a) => `تغییر پلن ${a.app} به ${a.planId}`,
   resource: (a) => a.app,
+  undoFa: (a) => `برگرداندن پلن ${a.app} به پلن قبلی (resize_app)`,
   plannedCalls: (a) => [LiaraRequests.resize(a.app, a.planId)],
   async monthlyCost(a, ctx) {
     return findPlan(await ctx.liara.listPlans(), a.planId)?.monthlyToman ?? null;
@@ -297,6 +347,7 @@ export const stopAppTool = defineTool({
   schema: z.object({ app: appName }),
   titleFa: (a) => `خاموش‌کردن ${a.app}`,
   resource: (a) => a.app,
+  undoFa: (a) => `روشن‌کردن دوباره‌ی ${a.app} (scale=1) از کنسول لیارا`,
   plannedCalls: (a) => [LiaraRequests.scale(a.app, 0)],
   async execute(a, ctx) {
     await ctx.liara.setScale(a.app, 0);
@@ -311,6 +362,7 @@ export const deleteAppTool = defineTool({
   schema: z.object({ app: appName }),
   titleFa: (a) => `حذف اپ ${a.app}`,
   resource: (a) => a.app,
+  undoFa: () => "برگشت‌ناپذیر است",
   plannedCalls: (a) => [LiaraRequests.deleteApp(a.app)],
   async execute(a, ctx) {
     await ctx.liara.deleteApp(a.app);

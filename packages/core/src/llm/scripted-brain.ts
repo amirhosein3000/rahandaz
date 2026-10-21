@@ -114,7 +114,7 @@ function deployFlow(repo: string, steps: Step[]): Decision {
   const last = steps[steps.length - 1];
   if (!last) return { call: "acquire_repo", args: { source: repo }, say: "مخزن را دریافت و تحلیل می‌کنم." };
   if (!last.ok && !["wait_for_release", "check_health"].includes(last.name)) {
-    return { final: `در مرحله‌ی «${last.name}» به خطا خوردم: ${last.summary}${last.error ? `\n(${last.error})` : ""}\nچیزی نیمه‌کاره رها نشده؛ می‌توانید دوباره امتحان کنید.` };
+    return { final: `در مرحله‌ی «${last.name}» به خطا خوردم: ${last.summary}${last.error ? `\n(${last.error})` : ""}\n${appliedSoFar(steps)}` };
   }
 
   const planIdx = steps.findIndex((s) => s.name === "propose_deploy_plan" && s.ok);
@@ -288,6 +288,15 @@ function operateFlow(userText: string, steps: Step[]): Decision {
 }
 
 // ── final messages ─────────────────────────────────────────────
+
+const CHANGING = new Set(["create_app", "set_env_vars", "deploy_app", "apply_fix", "restart_app", "resize_app", "stop_app", "delete_app"]);
+
+/** Honest partial-state report: what already changed before the failure. */
+function appliedSoFar(steps: Step[]): string {
+  const done = steps.filter((s) => CHANGING.has(s.name) && s.ok && !s.dryRun);
+  if (!done.length) return "هیچ تغییری روی منابع اعمال نشده؛ می‌توانید دوباره امتحان کنید.";
+  return `تا اینجا این تغییرها اعمال شده‌اند: ${done.map((s) => s.summary).join("؛ ")}. جزئیات و راه برگرداندن هر کدام در خلاصه‌ی اجرا و گزارش ممیزی است.`;
+}
 
 function successSummary(steps: Step[], health: { url: string; latencyMs?: number }): string {
   const plan = steps.find((s) => s.name === "propose_deploy_plan" && s.ok)?.data;

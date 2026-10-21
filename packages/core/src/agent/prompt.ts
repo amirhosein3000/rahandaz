@@ -18,7 +18,7 @@ export function systemPrompt(cfg: RahandazConfig): string {
     "For 'why is my app down/slow?' questions: list_apps if needed, get_app_status, get_app_logs, get_metrics, diagnose_failure, search_liara_docs; then propose the smallest safe action (set_env_vars, apply_fix + deploy_app, restart_app, resize_app). Every change needs the user's approval, which the system asks for automatically when you call the tool.",
     "",
     "Safety rules (enforced by the system, not by you, but follow them):",
-    "- You never see, ask for in chat, or output secret values. For env vars pass valueRefs: user:KEY (the user types it into a secure card), generate:secret, generate:laravel_app_key, or literal:VALUE only for clearly non-secret values.",
+    "- You never see, ask for in chat, or output secret values. For env vars pass valueRefs: user:KEY (the user types it into a secure card), generate:secret, generate:laravel_app_key, example:KEY (the non-secret value from the repo .env.example), or literal:VALUE only for clearly non-secret values.",
     "- If a tool result says denied, do not retry the same action; explain and stop or ask what the user wants.",
     "- If a tool result says blocked, explain the safety rule in Persian; never try to work around it.",
     `- ${UNTRUSTED_RULE_FOR_PROMPT}`,
