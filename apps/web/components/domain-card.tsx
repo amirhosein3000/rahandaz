@@ -43,13 +43,13 @@ export function DomainCard({ status }: { status: DomainStatus }) {
               {!s.done && s.who === "user" && s.values && s.values.length > 0 && (
                 <div className="mt-1.5 space-y-1">
                   {s.values.map((v) => (
-                    <div key={v.value} className="flex items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-1.5">
+                    <div key={v.text} className="flex items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-1.5">
                       <span className="text-[11.5px] text-muted">{v.labelFa}</span>
                       <code className="min-w-0 flex-1 truncate font-mono text-[12.5px] font-semibold" dir="ltr">
-                        {v.value}
+                        {v.text}
                       </code>
-                      <button type="button" onClick={() => copy(v.value)} className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[11.5px] hover:border-accent hover:text-accent">
-                        {copied === v.value ? "کپی شد" : "کپی"}
+                      <button type="button" onClick={() => copy(v.text)} className="shrink-0 rounded-md border border-line px-2 py-0.5 text-[11.5px] hover:border-accent hover:text-accent">
+                        {copied === v.text ? "کپی شد" : "کپی"}
                       </button>
                     </div>
                   ))}

@@ -20,6 +20,7 @@ export function Stepper({ run }: { run: RunView }) {
     return () => clearInterval(t);
   }, [live]);
   const end = live ? now : Date.parse(run.events.at(-1)?.ts ?? run.startedAt);
+  if (!stages.length) return null;
 
   return (
     <div className="rounded-xl border border-line bg-surface p-3 shadow-card">

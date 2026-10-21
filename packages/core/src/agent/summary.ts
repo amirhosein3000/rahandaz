@@ -6,12 +6,14 @@ export function buildSummary(
   events: AgentEvent[],
   opts: { status: RunStatus; textFa: string; durationMs: number; dryRun: boolean },
 ): SummaryCard {
+  const lastDomain = [...events].reverse().find((e) => e.type === "domain_status");
   const dryRunHappened = events.some((e) => e.type === "tool_result" && e.dryRun);
   const touchedApp = Boolean(run.appName);
   let outcome: SummaryCard["outcome"];
   if (opts.status === "stopped") outcome = "stopped";
   else if (dryRunHappened) outcome = "dry_run";
   else if (run.lastHealthOk === true && touchedApp) outcome = "healthy";
+  else if (lastDomain?.type === "domain_status" && lastDomain.status.next.who === "user") outcome = "waiting_user";
   else if (!touchedApp && opts.status === "completed") outcome = "answered";
   else outcome = "failed";
 

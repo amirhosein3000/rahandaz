@@ -22,7 +22,7 @@ export interface DomainStep {
   done: boolean;
   detailFa: string;
   /** Values the user must copy (nameservers, record values). */
-  values?: Array<{ labelFa: string; value: string }>;
+  values?: Array<{ labelFa: string; text: string }>;
 }
 
 export interface DomainStatus {
@@ -68,7 +68,7 @@ export async function domainStatus(ctx: ToolContext, app: string, domain: string
       who: "agent",
       done: recordsDone,
       detailFa: recordsDone ? "رکوردها روی DNS لیارا ثبت شده‌اند" : details ? "رکوردهای لازم هنوز ثبت نشده‌اند" : "بعد از اتصال دامنه معلوم می‌شود",
-      values: want.map((w) => ({ labelFa: `${w.type} ${w.name}`, value: Object.values(w.contents[0] ?? {})[0] ?? "" })),
+      values: want.map((w) => ({ labelFa: `${w.type} ${w.name}`, text: Object.values(w.contents[0] ?? {})[0] ?? "" })),
     },
     {
       key: "nameservers",
@@ -80,7 +80,7 @@ export async function domainStatus(ctx: ToolContext, app: string, domain: string
         : zone
           ? "این کار فقط از پنل ایرنیک (nic.ir) شدنی است؛ مقادیر زیر را آنجا وارد کنید"
           : "بعد از ساخت DNS دامنه در لیارا، مقادیرش اینجا می‌آید",
-      values: zone && !nsDone ? zone.nameServers.map((ns, i) => ({ labelFa: `NS ${i + 1}`, value: ns })) : undefined,
+      values: zone && !nsDone ? zone.nameServers.map((ns, i) => ({ labelFa: `NS ${i + 1}`, text: ns })) : undefined,
     },
     { key: "verified", titleFa: "تأیید دامنه توسط لیارا", who: "agent", done: verified, detailFa: verified ? "لیارا دامنه را تأیید کرد" : "بعد از اعمال NS و رکوردها خودکار تأیید می‌شود" },
     { key: "ssl", titleFa: "فعال‌سازی SSL (https)", who: "agent", done: ssl, detailFa: ssl ? `https://${domain} فعال است` : "بعد از تأیید دامنه، گواهی رایگان صادر می‌کنم" },

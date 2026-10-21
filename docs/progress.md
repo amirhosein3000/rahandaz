@@ -2,6 +2,30 @@
 
 Newest first. Each entry: what changed, what works, what's next.
 
+## 2026-10-21 (4): official spec → SRE agent, beginner UX, domains, automation, limits, submission docs
+
+The real brief arrived (docs/spec.md, scoring 100/100/50/50). Built against it:
+- **SRE agent** (`src/sre/*`, tool `sre_check`): health probes, CPU/RAM, log analysis (HTTP error rate,
+  p50/p95, error clusters), releases, failure rules → 8 checks, ranked causes with evidence, action or
+  guidance, API limitations, before/after verification. Mock: traffic logs, `memory_pressure` (slow) and
+  `db_down` (HTTP 500) scenarios. Monitor treats slowness (>2 s) as an incident.
+- **Model**: Liara AI (`LIARA_AI_*`) or any OpenAI-compatible provider, other one as automatic fallback.
+- **UX**: beginner home (one input, three intents, apps with one-click health check / publish new
+  version), stage indicator with current activity, SRE report card, domain checklist card, CI card,
+  risk tier + undo hint on approvals, follow-up messages continue the conversation.
+- **Domains**: add_domain, setup_dns (Liara DNS zone + ALIAS/TXT, record shapes from CLI source),
+  enable_ssl, domain_status checklist; the IRNIC nameserver step is handed to the user with exact values.
+- **Automation**: app→repo memory (publish new version = one click), `generate_ci` (GitHub Actions from
+  Liara's CI/CD docs).
+- **Limits**: `CAPABILITIES` register → `/limits` page and `explain_limitations` tool.
+- **Docs**: `docs/SUBMISSION.md` (Persian, required md), `docs/demo-script.md` (5-minute video script).
+- Fixed: redactor hid domain `value` fields (renamed to `text`); docs index now shared per process (test
+  suite 12 s, was flaky); SRE headline prioritises slowness; DB docs query names the DB and platform.
+- 111 tests; gates green.
+
+**Still blocked on the user**: `LIARA_API_TOKEN` (real-mode smoke + dry run, then live only with the
+user's go-ahead), a Liara AI key or other LLM key, a Bale bot token; recording the demo video.
+
 ## 2026-10-21 (3): prompt 1, verify and harden (part 1, without a Liara token)
 
 **Fixed after an SRE-style review**

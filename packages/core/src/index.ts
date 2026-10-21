@@ -17,6 +17,7 @@ export * from "./policy/fingerprint";
 export * from "./tools/types";
 export * from "./tools/registry";
 export type { DomainStatus, DomainStep } from "./tools/domain-tools";
+export { ciWorkflow, type CiSetup } from "./tools/ci-tools";
 export * from "./llm/types";
 export { OpenAICompatibleProvider } from "./llm/openai-compatible";
 export { ScriptedBrain } from "./llm/scripted-brain";

@@ -4,6 +4,7 @@ import type { AgentEvent } from "@rahandaz/core";
 import { faText } from "@/lib/fa";
 import { postJson, type RunView } from "@/lib/use-console";
 import { ApprovalCard } from "./approval-card";
+import { CiCard } from "./ci-card";
 import { DomainCard } from "./domain-card";
 import { SreReportCard } from "./sre-report";
 import { SummaryCard } from "./summary-card";
@@ -31,13 +32,15 @@ export function ChatPanel({ run }: { run: RunView | null }) {
     else setText("");
   };
 
+  // A domain checklist is a living status: show only its latest version.
+  const lastDomainSeq = [...(run?.events ?? [])].reverse().find((e) => e.type === "domain_status")?.seq;
   const resolved = new Map<string, "approved" | "denied">();
   for (const e of run?.events ?? []) if (e.type === "approval_resolved") resolved.set(e.approvalId, e.decision);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="scroll-thin min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-        {run?.events.map((e) => <Message key={e.seq} e={e} resolved={resolved} />)}
+        {run?.events.map((e) => (e.type === "domain_status" && e.seq !== lastDomainSeq ? null : <Message key={e.seq} e={e} resolved={resolved} />))}
         {run && (run.status === "running") && (
           <div className="flex items-center gap-2 text-[13px] text-muted">
             <span className="pulse-dot">●</span> راهی در حال کار است…
@@ -107,6 +110,8 @@ function Message({ e, resolved }: { e: AgentEvent; resolved: Map<string, "approv
       return <SreReportCard report={e.report} />;
     case "domain_status":
       return <DomainCard status={e.status} />;
+    case "ci_setup":
+      return <CiCard setup={e.setup} />;
     case "summary":
       return <SummaryCard card={e.card} />;
     case "error":

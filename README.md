@@ -18,8 +18,23 @@ docs citation → fix as a reviewable diff → redeploy → verified healthy URL
 
 > Status: hackathon build. Everything runs offline in mock mode; real Liara mode is implemented from
 > the official OpenAPI spec and CLI but not yet verified end to end. See [What works](#what-works).
+>
+> **Submission document (Persian): [docs/SUBMISSION.md](docs/SUBMISSION.md)**: architecture, Liara API
+> connection, limitations, user interaction. Demo video script: [docs/demo-script.md](docs/demo-script.md).
+> Official challenge brief and scoring: [docs/spec.md](docs/spec.md).
 
 ## Highlights
+
+- **SRE agent.** "My site is slow / returns 500": probes the URL, reads CPU/RAM, analyses 30 minutes of
+  logs (HTTP error rate, latency percentiles, error clusters), checks releases, then ranks probable causes
+  with evidence, proposes the fix (approval) or step-by-step guidance, and **verifies before/after**.
+- **Domains, IRNIC included.** Attaches the domain, creates the zone and records on Liara DNS, issues SSL;
+  the one step no API can do (nameservers at IRNIC) becomes an exact checklist with copy buttons.
+- **Automation.** One-click "publish new version", periodic health checks that start investigations on
+  their own, and a GitHub Actions workflow (Liara's CI/CD docs) for deploy-on-push.
+- **API limits, stated.** A capabilities register (`/limits` page + `explain_limitations` tool): what Liara's
+  APIs allow, what is partial, what only the user can do.
+- **Model choice.** Liara AI (Liara credits) or any OpenAI-compatible provider, the other one as fallback.
 
 - **Self-healing deploys.** Seven diagnosis rules (wrong port, missing start script, missing env var,
   Laravel `APP_KEY`, unpinned Werkzeug, bad Docker base image, `PORT` override), each with an exact fix,
@@ -89,6 +104,8 @@ fixture, and the run modes.
 | Area | Status |
 |---|---|
 | Full demo flow on 6 broken fixtures + 1 healthy, mock mode | ✅ tested end to end (vitest) and in the console |
+| SRE report: slow site (RAM), HTTP 500 (database), crash (env), healthy app; fix + verification | ✅ tested and checked in the console |
+| Domain connection (Liara DNS records, IRNIC checklist, SSL), CI/CD workflow, publish new version | ✅ tested (mock) |
 | Break it on stage, health monitor, incident runs | ✅ tested |
 | Chat bot (Bale/Telegram API) | ✅ tested against a fake Bot API; not yet tried on a real Bale bot |
 | Policy layer, redaction, vault, injection defence, audit chain, budget guard, DRY_RUN | ✅ tested |

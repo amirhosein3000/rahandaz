@@ -35,6 +35,7 @@ export const CAPABILITIES: Capability[] = [
   { area: "domain", titleFa: "اتصال دامنه به اپ و صدور SSL", status: "api", howFa: "با تأیید", endpoint: "POST /v1/domains, /v1/domains/provision-ssl-certs" },
   { area: "domain", titleFa: "ساخت DNS و رکوردها روی DNS لیارا", status: "api", howFa: "با تأیید", endpoint: "dns-service: POST /api/v1/zones, /dns-records" },
   { area: "domain", titleFa: "تغییر سرورهای نام (NS) در ایرنیک", status: "none", howFa: "ایرنیک API عمومی ندارد؛ مقادیر دقیق را می‌دهم و شما در nic.ir وارد می‌کنید" },
+  { area: "deploy", titleFa: "استقرار خودکار با هر push (CI/CD)", status: "partial", howFa: "فایل GitHub Actions را می‌سازم؛ گذاشتن آن در مخزن و تعریف Secret در گیت‌هاب با شماست (به مخزن شما دسترسی نوشتن نداریم)" },
   { area: "data", titleFa: "فهرست دیتابیس‌ها و دیسک‌ها", status: "api", howFa: "فقط‌خواندنی", endpoint: "GET /v1/databases, /v1/projects/{id}/disks" },
   { area: "account", titleFa: "شارژ حساب و پرداخت", status: "none", howFa: "فقط از کنسول لیارا" },
 ];

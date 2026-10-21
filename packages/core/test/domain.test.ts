@@ -14,8 +14,9 @@ describe("connect a domain", () => {
     const ns = last.steps.find((s) => s.key === "nameservers")!;
     expect(ns.done).toBe(false);
     expect(ns.values?.length).toBe(2);
+    expect(ns.values![0]!.text).toMatch(/^ns1./); // real value, not a redaction placeholder
     expect(run.messages.at(-1)?.content).toContain("nic.ir");
-    expect(run.messages.at(-1)?.content).toContain(ns.values![0]!.value);
+    expect(run.messages.at(-1)?.content).toContain(ns.values![0]!.text);
 
     // The user changes NS at IRNIC; in mock mode propagation is simulated by time.
     const liara = app.liara as unknown as { zones: Map<string, { createdAt: number }> };
@@ -56,5 +57,16 @@ describe("domain tools obey the policy layer", () => {
       expect(s.status).toBe("awaiting_approval");
       expect(await app.liara.listDomains("demo-shop")).toEqual([]);
     }
+  });
+});
+
+describe("automation: CI/CD", () => {
+  it("generates Liara's GitHub Actions workflow for the app and names the user's two steps", async () => {
+    const app = makeApp();
+    const run = await runToEnd(app, "برای demo-shop استقرار خودکار با هر push بساز");
+    const ev = app.runtime.events(run.id).find((e) => e.type === "ci_setup");
+    expect(ev?.type === "ci_setup" && ev.setup.content).toContain('liara deploy --app="demo-shop"');
+    expect(ev?.type === "ci_setup" && ev.setup.content).toContain("secrets.LIARA_API_TOKEN");
+    expect(run.applied).toEqual([]);
   });
 });

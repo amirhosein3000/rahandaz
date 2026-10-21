@@ -54,5 +54,6 @@ export const OUTCOME_FA: Record<string, string> = {
   failed: "ناموفق",
   dry_run: "اجرای آزمایشی (DRY_RUN)",
   answered: "پاسخ داده شد",
+  waiting_user: "منتظر یک قدم از طرف شما",
   stopped: "متوقف شد",
 };

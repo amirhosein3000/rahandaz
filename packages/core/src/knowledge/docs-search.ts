@@ -45,6 +45,8 @@ export interface EmbedConfig {
   model: string;
 }
 
+const LEXICAL_CACHE = new Map<string, { chunks: DocChunk[]; meta: IndexMeta; bm25: BM25Index }>();
+
 export class LiaraDocsIndex implements DocsSearch {
   private chunks: DocChunk[] = [];
   private bm25: BM25Index | null = null;
@@ -66,11 +68,18 @@ export class LiaraDocsIndex implements DocsSearch {
       console.warn(`[docs] no index at ${metaPath}; search_liara_docs will return nothing`);
       return;
     }
-    const parsed = JSON.parse(fs.readFileSync(metaPath, "utf8")) as IndexMeta & { chunks: DocChunk[] };
-    const { chunks, ...meta } = parsed;
+    // The index is read-only: parse and build BM25 once per process, however many runtimes exist.
+    let shared = LEXICAL_CACHE.get(metaPath);
+    if (!shared) {
+      const parsed = JSON.parse(fs.readFileSync(metaPath, "utf8")) as IndexMeta & { chunks: DocChunk[] };
+      const { chunks, ...meta } = parsed;
+      shared = { chunks, meta, bm25: buildBM25Index(chunks) };
+      LEXICAL_CACHE.set(metaPath, shared);
+    }
+    const { chunks, meta } = shared;
     this.chunks = chunks;
     this.meta = meta;
-    this.bm25 = buildBM25Index(chunks);
+    this.bm25 = shared.bm25;
     const binPath = path.join(this.dir, "index.bin");
     if (this.embed && meta.hasDense && fs.existsSync(binPath)) {
       const buf = fs.readFileSync(binPath);

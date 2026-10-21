@@ -8,6 +8,7 @@ import type { Workspace } from "../repo/workspace";
 import type { InjectionFinding } from "../safety/untrusted";
 import type { SreReport } from "../sre/report";
 import type { DomainStatus } from "../tools/domain-tools";
+import type { CiSetup } from "../tools/ci-tools";
 
 export type ToolKind = "read" | "mutating" | "destructive";
 /** "plan" = an approval gate that changes nothing by itself (propose_deploy_plan). */
@@ -47,7 +48,7 @@ export interface ApprovalRequest {
 }
 
 export interface SummaryCard {
-  outcome: "healthy" | "failed" | "dry_run" | "answered" | "stopped";
+  outcome: "healthy" | "failed" | "dry_run" | "answered" | "waiting_user" | "stopped";
   appName: string | null;
   url: string | null;
   repo: string | null;
@@ -85,6 +86,7 @@ type EventBody =
   | { type: "health"; app: string; health: HealthResult }
   | { type: "sre_report"; report: SreReport }
   | { type: "domain_status"; status: DomainStatus }
+  | { type: "ci_setup"; setup: CiSetup }
   | { type: "release"; app: string; releaseId: string; state: ReleaseState; port?: number }
   | { type: "summary"; card: SummaryCard }
   | { type: "status"; status: RunStatus; reasonFa?: string }

@@ -27,12 +27,34 @@ const SRE: Array<{ key: string; titleFa: string; tools: string[]; optional?: boo
   { key: "verify", titleFa: "بررسی نتیجه", tools: ["sre_check:verify", "check_health"] },
 ];
 
-export function runKind(events: AgentEvent[]): "deploy" | "sre" {
-  return events.some((e) => e.type === "tool_call" && (e.tool === "acquire_repo" || e.tool === "propose_deploy_plan")) ? "deploy" : "sre";
+export function runKind(events: AgentEvent[]): "deploy" | "sre" | "domain" | "simple" {
+  const tools = new Set(events.flatMap((e) => (e.type === "tool_call" ? [e.tool] : [])));
+  if (tools.has("acquire_repo") || tools.has("propose_deploy_plan")) return "deploy";
+  if (tools.has("domain_status") || tools.has("add_domain")) return "domain";
+  if (tools.has("generate_ci") || tools.has("explain_limitations")) return "simple";
+  return "sre";
+}
+
+/** Domain stages come straight from the latest checklist: it already knows who does what. */
+function domainStages(events: AgentEvent[], status: string): Stage[] {
+  const last = [...events].reverse().find((e) => e.type === "domain_status");
+  const titles: Record<string, string> = { attach: "اتصال به اپ", records: "DNS و رکوردها", nameservers: "قدم شما در ایرنیک", verified: "تأیید لیارا", ssl: "SSL" };
+  if (!last || last.type !== "domain_status") return Object.entries(titles).map(([key, titleFa]) => ({ key, titleFa, state: "pending" as StageState }));
+  let activeSet = false;
+  return last.status.steps.map((st) => {
+    let state: StageState = st.done ? "done" : "pending";
+    if (!st.done && !activeSet) {
+      activeSet = true;
+      state = status === "awaiting_approval" || (st.who === "user" && status === "completed") ? "waiting" : status === "running" ? "active" : "pending";
+    }
+    return { key: st.key, titleFa: titles[st.key] ?? st.titleFa, state };
+  });
 }
 
 export function stagesFor(events: AgentEvent[], status: string): Stage[] {
   const kind = runKind(events);
+  if (kind === "simple") return [];
+  if (kind === "domain") return domainStages(events, status);
   const defs = kind === "deploy" ? DEPLOY : SRE;
   const seen = new Map<string, "ok" | "fail" | "running" | "waiting">();
   let lastStage = -1;

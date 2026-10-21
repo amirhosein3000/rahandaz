@@ -96,6 +96,21 @@ function decide(userText: string, steps: Step[], allSteps: Step[] = steps): Deci
     if (!last) return { call: "explain_limitations", args: {}, say: "فهرست دقیق کارهایی که از طریق API لیارا ممکن است و نیست را می‌آورم." };
     if (last.name === "explain_limitations") return { final: limitsText(last.data.capabilities ?? []) };
   }
+  if (CI_RE.test(userText)) {
+    const last = steps[steps.length - 1];
+    if (!last) return { call: "list_apps", args: {}, say: "استقرار خودکار را آماده می‌کنم؛ اول اپ را پیدا می‌کنم." };
+    if (last.name === "list_apps") {
+      const apps = (last.data.apps ?? []) as Array<{ name: string }>;
+      const app = apps.find((a) => userText.includes(a.name))?.name ?? apps[0]?.name;
+      if (!app) return { final: "اپی پیدا نکردم؛ اول باید پروژه مستقر شود." };
+      return { call: "generate_ci", args: { app } };
+    }
+    if (last.name === "generate_ci") {
+      if (!last.ok) return { final: last.summary };
+      return { final: `فایل استقرار خودکار برای ${last.data.app} آماده است. بعد از دو قدمی که با شماست، هر push روی main خودکار روی لیارا منتشر می‌شود.
+مستند: ${last.data.docsUrl}` };
+    }
+  }
   const repo = findRepoRef(userText);
   if (repo) return deployFlow(repo, steps, userText);
   const domain = domainIn(userText);
@@ -370,11 +385,13 @@ function domainChecklist(st: any): string {
   const lines = [st.next.who === "none" ? `✓ ${st.next.textFa}` : `اتصال ${st.domain} به ${st.app}:`];
   for (const s of st.steps) {
     lines.push(`${s.done ? "✓" : s.who === "user" ? "👤" : "•"} ${s.titleFa}${s.done ? "" : ` (${s.who === "user" ? "با شما" : "با من"})`}`);
-    if (!s.done && s.values?.length && s.who === "user") for (const v of s.values) lines.push(`    ${v.labelFa}: ${v.value}`);
+    if (!s.done && s.values?.length && s.who === "user") for (const v of s.values) lines.push(`    ${v.labelFa}: ${v.text}`);
   }
   if (st.next.who === "user") lines.push("", st.next.textFa);
   return lines.join("\n");
 }
+
+const CI_RE = /(ci\/cd|cicd|github actions|استقرار خودکار|هر بار که push|خودکار منتشر|هر push)/i;
 
 const LIMITS_RE = /(محدودیت|چه کارهایی (می‌توانی|میتونی|نمی)|نمی‌توانی|نمیتونی|rollback|برگرداندن ریلیز|limitation)/i;
 

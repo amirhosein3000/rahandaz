@@ -78,7 +78,7 @@ export function SummaryCard({ card }: { card: Summary }) {
             ))}
           </div>
         )}
-        {card.outcome !== "healthy" && card.applied.length > 0 && (
+        {(card.outcome === "failed" || card.outcome === "stopped") && card.applied.length > 0 && (
           <div className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px]">
             <div className="mb-1 font-semibold text-warn">تغییرهایی که اعمال شده و راه برگرداندنشان</div>
             <ul className="space-y-1">

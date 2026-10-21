@@ -28,7 +28,9 @@ packages/core/
   src/agent/        runtime (loop + executor + approvals + events), prompt, summary, monitor, chaos
   src/policy/       policy.ts (execute/ask/block), fingerprint.ts (approval binding)
   src/safety/       redactor (secrets), untrusted (injection wrap/scan), vault (env values)
-  src/tools/        typed tools: repo-tools, liara-tools, knowledge-tools, registry
+  src/tools/        typed tools: repo-, liara-, knowledge- (docs, diagnose, explain_limitations), sre-,
+                    domain- (domain_status/add_domain/setup_dns/enable_ssl), ci- (generate_ci), registry
+  src/limitations.ts  CAPABILITIES register: what Liara's API allows / partial / none (→ /limits page, tool, docs)
   src/analyser/     deterministic repo detectors
   src/healer/       diagnosis rules + fix proposals (diffs / env changes)
   src/sre/          SRE agent: log analysis (HTTP stats, error clusters) + report (checks, ranked causes,
@@ -165,6 +167,14 @@ and the break-it-on-stage incident loop.
    process when `CHAT_BOT_TOKEN` is set (so chat-started runs show on the console timeline). Only
    `CHAT_ALLOWED_IDS` may use it; secrets are never asked for in chat; destructive approvals need the
    name typed as a reply. Test: `chat-bot.test.ts` (fake Bot API).
+
+3. **SRE: slow site → ranked causes → fix → verified.** «خرابش کن» → «کندی (پرشدن RAM)»: the monitor starts
+   an investigation, the SRE report ranks RAM first with OOM evidence, proposes a plan upgrade (cost delta,
+   one approval) and the re-check shows before/after. Test: `sre.test.ts`. The demo script is
+   `docs/demo-script.md`; the submission doc is `docs/SUBMISSION.md` (keep both in sync with features).
+
+Redactor gotcha: `redactDeep` replaces any object field named `value` (or token/secret/password…). Never
+name a user-visible field `value` in events or tool data; use `text`.
 
 Also: the end-of-run Persian summary card (`agent/summary.ts`, built from run state, not LLM text) must
 stay worth sharing: outcome, URL, root cause, fixes, cost, docs cited, time.

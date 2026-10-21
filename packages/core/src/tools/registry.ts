@@ -17,6 +17,7 @@ import {
 } from "./liara-tools";
 import { diagnoseFailureTool, explainLimitationsTool, searchDocsTool } from "./knowledge-tools";
 import { sreCheckTool } from "./sre-tools";
+import { generateCiTool } from "./ci-tools";
 import { addDomainTool, domainStatusTool, enableSslTool, setupDnsTool } from "./domain-tools";
 import { acquireRepoTool, analyseRepoTool, applyFixTool, proposeDeployPlanTool } from "./repo-tools";
 import type { AnyTool } from "./types";
@@ -31,6 +32,7 @@ export const ALL_TOOLS: AnyTool[] = [
   diagnoseFailureTool,
   sreCheckTool,
   explainLimitationsTool,
+  generateCiTool,
   domainStatusTool,
   addDomainTool,
   setupDnsTool,
