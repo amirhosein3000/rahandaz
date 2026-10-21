@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "console", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@rahandaz/web", "dev"], "port": 3200 }
+  ]
+}

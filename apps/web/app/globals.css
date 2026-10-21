@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Rahandaz palette: warm paper + ink + saffron. Original; deliberately not Liara's look. */
+:root {
+  --bg: #f6f4ef;
+  --surface: #ffffff;
+  --surface-2: #f1ede5;
+  --ink: #1b1f24;
+  --muted: #5d6470;
+  --line: #e4dfd4;
+  --accent: #c8711f;
+  --accent-soft: #fbead6;
+  --on-accent: #ffffff;
+  --ok: #127a5f;
+  --ok-soft: #dcf2ea;
+  --bad: #b8322a;
+  --bad-soft: #fbe3e0;
+  --warn: #9a6512;
+  --warn-soft: #fbefd6;
+  --info: #2b65a3;
+  --info-soft: #e1ecf8;
+  --code-bg: #15191e;
+  --code-ink: #dfe4ea;
+  --shadow: 0 1px 2px rgb(27 31 36 / 0.06), 0 4px 16px rgb(27 31 36 / 0.05);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1215;
+    --surface: #171b20;
+    --surface-2: #1f252c;
+    --ink: #ecf0f4;
+    --muted: #9ba4af;
+    --line: #2b323a;
+    --accent: #f0a04b;
+    --accent-soft: #3a2a17;
+    --on-accent: #1b1305;
+    --ok: #3fc49b;
+    --ok-soft: #12332a;
+    --bad: #f06e64;
+    --bad-soft: #3b1a18;
+    --warn: #e7b553;
+    --warn-soft: #3a2e14;
+    --info: #74b0ef;
+    --info-soft: #172a40;
+    --code-bg: #0b0d10;
+    --code-ink: #d6dde5;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0f1215;
+  --surface: #171b20;
+  --surface-2: #1f252c;
+  --ink: #ecf0f4;
+  --muted: #9ba4af;
+  --line: #2b323a;
+  --accent: #f0a04b;
+  --accent-soft: #3a2a17;
+  --on-accent: #1b1305;
+  --ok: #3fc49b;
+  --ok-soft: #12332a;
+  --bad: #f06e64;
+  --bad-soft: #3b1a18;
+  --warn: #e7b553;
+  --warn-soft: #3a2e14;
+  --info: #74b0ef;
+  --info-soft: #172a40;
+  --code-bg: #0b0d10;
+  --code-ink: #d6dde5;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-code-bg: var(--code-bg);
+  --color-code-ink: var(--code-ink);
+  --font-sans: "Vazirmatn Variable", "Vazirmatn", Tahoma, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+  --shadow-card: var(--shadow);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Latin code inside RTL text keeps its own direction. */
+code,
+pre,
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: left;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot { animation: none; }
+  * { scroll-behavior: auto !important; }
+}

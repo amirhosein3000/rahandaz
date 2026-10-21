@@ -10,7 +10,8 @@ export const searchDocsTool = defineTool({
   schema: z.object({ query: z.string().min(2).max(300), k: z.number().int().min(1).max(8).optional() }),
   titleFa: (a) => `جستجو در مستندات لیارا: ${a.query}`,
   async execute(a, ctx) {
-    const hits = await ctx.docs.search(a.query, a.k ?? 3);
+    const platform = ctx.run.analysis?.platform ?? (ctx.run.appName ? (await ctx.liara.getApp(ctx.run.appName).catch(() => null))?.platform : undefined);
+    const hits = await ctx.docs.search(a.query, a.k ?? 3, { platform });
     ctx.emit({ type: "docs", query: a.query, hits });
     for (const h of hits) if (!ctx.run.docsCited.some((d) => d.url === h.url)) ctx.run.docsCited.push(h);
     return {

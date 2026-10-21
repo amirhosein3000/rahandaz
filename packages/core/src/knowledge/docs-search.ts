@@ -20,8 +20,15 @@ export interface DocHit {
   via: "bm25" | "hybrid";
 }
 
+export interface SearchOptions {
+  /** Liara platform of the app (node, next, laravel, …): other platforms' pages are dropped. */
+  platform?: string;
+  /** Doc sections to search. Default: deployment-related ones (no AI-service or email pages). */
+  sections?: string[];
+}
+
 export interface DocsSearch {
-  search(query: string, k?: number): Promise<DocHit[]>;
+  search(query: string, k?: number, opts?: SearchOptions): Promise<DocHit[]>;
   info(): { chunks: number; dense: boolean };
 }
 
@@ -77,23 +84,29 @@ export class LiaraDocsIndex implements DocsSearch {
     return { chunks: this.chunks.length, dense: this.vectors !== null };
   }
 
-  async search(query: string, k = 4): Promise<DocHit[]> {
+  async search(query: string, k = 4, opts: SearchOptions = {}): Promise<DocHit[]> {
     this.load();
     if (!this.bm25) return [];
-    const lexical: RetrievedChunk[] = bm25Search(this.bm25, query, 20).map(({ docIndex, score }) => ({ ...this.chunks[docIndex]!, score }));
+    const lexical: RetrievedChunk[] = bm25Search(this.bm25, query, 60).map(({ docIndex, score }) => ({ ...this.chunks[docIndex]!, score }));
 
     let ranked: RetrievedChunk[] = lexical;
     let via: DocHit["via"] = "bm25";
-    const dense = await this.denseSearch(query, 20);
+    const dense = await this.denseSearch(query, 60);
     if (dense.length) {
-      ranked = fuseRRF(lexical, dense, 20).map((c) => ({ ...c, score: c.rrf }));
+      ranked = fuseRRF(lexical, dense, 60).map((c) => ({ ...c, score: c.rrf }));
       via = "hybrid";
     }
+
+    const sections = new Set(opts.sections ?? DEVOPS_SECTIONS);
+    const docsPlatform = opts.platform ? DOCS_PLATFORM[opts.platform] ?? opts.platform : null;
+    const relevant = (c: RetrievedChunk) =>
+      sections.has(c.section) && !(docsPlatform && c.section === "paas" && c.platform && PLATFORM_PAGES.has(c.platform) && c.platform !== docsPlatform);
 
     // One hit per page: several chunks of the same page crowd out other sources.
     const seen = new Set<string>();
     const hits: DocHit[] = [];
     for (const c of ranked) {
+      if (!relevant(c)) continue;
       if (seen.has(c.url)) continue;
       seen.add(c.url);
       hits.push({
@@ -140,6 +153,11 @@ export class LiaraDocsIndex implements DocsSearch {
     }
   }
 }
+
+const DEVOPS_SECTIONS = ["paas", "dbaas", "references", "overview", "dns-management-system", "object-storage"];
+/** Liara platform id → the docs' platform folder. */
+const DOCS_PLATFORM: Record<string, string> = { node: "nodejs", next: "nextjs", laravel: "laravel", php: "php", python: "python", django: "django", flask: "flask", go: "go", docker: "docker", dotnet: "dotnet", react: "react", vue: "vue", angular: "angular", static: "static" };
+const PLATFORM_PAGES = new Set(Object.values(DOCS_PLATFORM));
 
 /** ~320 chars around the first query term found in the chunk. */
 function snippetFor(text: string, query: string): string {

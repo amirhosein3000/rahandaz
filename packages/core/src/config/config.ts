@@ -39,11 +39,11 @@ const num = (v: string | undefined, dflt: number) => {
 
 /** Walk up from `start` to the monorepo root (the folder holding pnpm-workspace.yaml). */
 export function findRootDir(start = process.cwd()): string {
-  let dir = path.resolve(start);
+  let dir = path.resolve(/*turbopackIgnore: true*/ start);
   for (;;) {
     if (fs.existsSync(path.join(dir, "pnpm-workspace.yaml"))) return dir;
     const parent = path.dirname(dir);
-    if (parent === dir) return path.resolve(start);
+    if (parent === dir) return path.resolve(/*turbopackIgnore: true*/ start);
     dir = parent;
   }
 }

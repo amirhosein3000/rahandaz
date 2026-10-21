@@ -28,6 +28,8 @@ export interface ApprovalRequest {
   calls: PlannedCall[];
   diffs?: Array<{ path: string; diff: string }>;
   plan?: DeployPlan;
+  /** Env vars this action sets: names and where each value comes from (never the value). */
+  envRefs?: Array<{ key: string; labelFa: string; overwrite: boolean }>;
   /** Env vars whose values the user must type into the card (never seen by the LLM). */
   secretInputs: Array<{ key: string; labelFa: string }>;
   requireTypedConfirmation?: string;

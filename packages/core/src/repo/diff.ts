@@ -20,7 +20,7 @@ export function unifiedDiff(file: string, before: string, after: string, context
       ops.push({ t: " ", line: a[i]!, ai: i, bi: j });
       i++;
       j++;
-    } else if (j < m && (i >= n || lcs[i]![j + 1]! >= lcs[i + 1]![j]!)) {
+    } else if (j < m && (i >= n || lcs[i]![j + 1]! > lcs[i + 1]![j]!)) {
       ops.push({ t: "+", line: b[j]!, ai: i, bi: j });
       j++;
     } else {

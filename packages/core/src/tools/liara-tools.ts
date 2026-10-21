@@ -201,7 +201,9 @@ export const setEnvVarsTool = defineTool({
   plannedCalls: (a) => [LiaraRequests.updateEnvs(a.app, a.vars.map((v) => v.key))],
   async approvalExtras(a, ctx) {
     const redeploy = envFixRedeploy(a.vars, ctx);
+    const existing = (await ctx.liara.getApp(a.app).catch(() => null))?.envKeys ?? [];
     return {
+      envRefs: a.vars.map((v) => ({ key: v.key, labelFa: SecretVault.describeRef(v.valueRef).labelFa, overwrite: existing.includes(v.key) })),
       titleFa: redeploy ? `تنظیم ${a.vars.map((v) => v.key).join("، ")} روی ${a.app} و دیپلوی دوباره` : undefined,
       calls: [
         LiaraRequests.updateEnvs(a.app, a.vars.map((v) => v.key)),
