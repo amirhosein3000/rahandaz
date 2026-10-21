@@ -23,4 +23,5 @@ export { HealthMonitor } from "./agent/monitor";
 export { breakApp, CHAOS_SCENARIOS } from "./agent/chaos";
 export { AGENT_NAME_FA, systemPrompt } from "./agent/prompt";
 export * from "./format/fa";
+export { ChatBot, type ChatBotOptions } from "./chat/chat-bot";
 export * from "./factory";

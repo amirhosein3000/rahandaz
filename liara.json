@@ -1,0 +1,13 @@
+{
+  "platform": "docker",
+  "app": "rahandaz-console",
+  "port": 3000,
+  "disks": [{ "name": "rahandaz-data", "mountTo": "/app/var" }],
+  "healthCheck": {
+    "command": "CMD wget -qO- http://localhost:3000/api/health || exit 1",
+    "interval": 30,
+    "timeout": 10,
+    "retries": 3,
+    "startPeriod": 20
+  }
+}

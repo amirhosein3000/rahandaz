@@ -35,7 +35,10 @@ packages/core/
   src/knowledge/    search_liara_docs: vendored LiaraYar BM25/RRF + data/liara-docs index
   src/llm/          OpenAI-compatible provider + ScriptedBrain (MOCK_LLM)
   src/audit/        append-only hash-chained audit log
+  src/chat/         Bale/Telegram bot adapter (deploy from a chat message)
 apps/web/         console (Next.js): chat + live timeline + approval cards + audit page + «خرابش کن»
+                  API routes in app/api/*; the ONLY web approval path is app/api/runs/[id]/approvals/[approvalId]
+                  CONSOLE_PASSWORD → HTTP Basic auth on every API route (set it on any deployed console)
 apps/cli/         terminal entry (`pnpm cli`)
 fixtures/         7 apps (6 broken in known ways + demo-shop healthy); fixtures.json describes them
 data/liara-docs/  LiaraYar docs index (meta.json BM25, index.bin dense vectors)
@@ -122,6 +125,8 @@ pnpm smoke:liara                # real, read-only: proves LIARA_API_TOKEN works 
 | Real, dry run | `LIARA_MODE=real LIARA_API_TOKEN=…` (DRY_RUN defaults to true in real mode) |
 | Real, live | add `DRY_RUN=false ALLOWED_APPS=rahandaz-*`. **Only after the user says so.** |
 | Break it on stage | add `ALLOW_DESTRUCTIVE=true` (mock: `demo-shop` is pre-deployed) |
+| Chat bot | `CHAT_BOT_TOKEN=… CHAT_ALLOWED_IDS=<your chat id>` (Bale default; Telegram: `CHAT_BOT_API_BASE=https://api.telegram.org`) |
+| Deployed console | Docker + `liara.json` at the root; set `CONSOLE_PASSWORD`; disk `rahandaz-data` → `/app/var` |
 
 Port 3000 on the dev box is usually taken by another project → the console uses **3200**.
 `docs.liara.ir` is unreachable from the dev box; use `data/liara-docs` for doc content.
@@ -145,7 +150,10 @@ and the break-it-on-stage incident loop.
    under 2 minutes, with the whole story on the live timeline. Code: `agent/chaos.ts`, `agent/monitor.ts`,
    test `misc.test.ts › break it on stage`.
 2. **Deploy from a chat message**: send a GitHub link to the Bale/Telegram bot, approve with chat
-   buttons, get the live URL back. Code: `apps/bot` (see progress.md for status).
+   buttons, get the live URL back. Code: `packages/core/src/chat/chat-bot.ts`, started inside the console
+   process when `CHAT_BOT_TOKEN` is set (so chat-started runs show on the console timeline). Only
+   `CHAT_ALLOWED_IDS` may use it; secrets are never asked for in chat; destructive approvals need the
+   name typed as a reply. Test: `chat-bot.test.ts` (fake Bot API).
 
 Also: the end-of-run Persian summary card (`agent/summary.ts`, built from run state, not LLM text) must
 stay worth sharing: outcome, URL, root cause, fixes, cost, docs cited, time.

@@ -4,7 +4,7 @@
  * the user's channel, so a deployed console must not be open to the world.
  */
 import crypto from "node:crypto";
-import { createRahandaz, type Rahandaz } from "@rahandaz/core";
+import { ChatBot, createRahandaz, type Rahandaz } from "@rahandaz/core";
 
 const g = globalThis as unknown as { __rahandaz?: Rahandaz };
 
@@ -13,6 +13,10 @@ export function rz(): Rahandaz {
     g.__rahandaz = createRahandaz();
     if (process.env.HEALTH_MONITOR !== "false") {
       g.__rahandaz.monitor.start(Number(process.env.HEALTH_MONITOR_INTERVAL_MS ?? 4000));
+    }
+    const { chat } = g.__rahandaz.config;
+    if (chat.botToken) {
+      new ChatBot(g.__rahandaz.runtime, { token: chat.botToken, apiBase: chat.apiBase, allowedChatIds: chat.allowedChatIds, consoleUrl: process.env.CONSOLE_PUBLIC_URL }).start();
     }
   }
   return g.__rahandaz;
