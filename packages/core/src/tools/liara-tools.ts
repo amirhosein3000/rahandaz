@@ -326,6 +326,14 @@ export const resizeAppTool = defineTool({
   kind: "mutating",
   schema: z.object({ app: appName, planId: z.string().max(40) }),
   titleFa: (a) => `تغییر پلن ${a.app} به ${a.planId}`,
+  async approvalExtras(a, ctx) {
+    const [plans, app] = await Promise.all([ctx.liara.listPlans(), ctx.liara.getApp(a.app)]);
+    const from = plans.find((p) => p.id === app?.planId);
+    const to = findPlan(plans, a.planId);
+    if (!from || !to) return {};
+    const delta = to.monthlyToman - from.monthlyToman;
+    return { titleFa: `تغییر پلن ${a.app} از ${from.labelFa} به ${to.labelFa} (${delta >= 0 ? "+" : "−"}${Math.abs(delta).toLocaleString("en-US")} تومان در ماه)` };
+  },
   resource: (a) => a.app,
   undoFa: (a) => `برگرداندن پلن ${a.app} به پلن قبلی (resize_app)`,
   plannedCalls: (a) => [LiaraRequests.resize(a.app, a.planId)],

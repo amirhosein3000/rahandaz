@@ -5,6 +5,14 @@
 import fs from "node:fs";
 import path from "node:path";
 
+export interface LlmEndpoint {
+  provider: "liara" | "openai-compatible";
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  timeoutMs: number;
+}
+
 export interface RahandazConfig {
   /** "mock" uses MockLiaraClient; "real" talks to api.liara.ir. */
   liaraMode: "mock" | "real";
@@ -23,7 +31,8 @@ export interface RahandazConfig {
   maxRunTokens: number;
   /** Default wall-clock limit for one tool call (tools that wait declare their own). */
   toolTimeoutMs: number;
-  llm: { baseUrl: string; apiKey: string; model: string; timeoutMs: number };
+  /** Agent models, in order of preference: the first is used, the next is the automatic fallback. */
+  llms: LlmEndpoint[];
   embed: { baseUrl: string; apiKey: string; model: string } | null;
   liara: { apiToken: string; teamId: string; region: string; baseUrl: string };
   githubToken: string;
@@ -57,15 +66,23 @@ export class ConfigError extends Error {}
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): RahandazConfig {
   const rootDir = env.RAHANDAZ_ROOT ? path.resolve(env.RAHANDAZ_ROOT) : findRootDir();
   const liaraMode = env.LIARA_MODE === "real" ? "real" : "mock";
-  const llmBaseUrl = (env.LLM_BASE_URL ?? "").trim();
-  const mockLlm = truthy(env.MOCK_LLM, !env.LLM_API_KEY);
-
-  // Hackathon rule: Liara's own AI service is not allowed as the agent's model.
-  if (/(^|\.)liara\.(ir|run)\b|ai\.liara/i.test(llmBaseUrl)) {
-    throw new ConfigError("LLM_BASE_URL points at Liara's AI service, which the hackathon rules do not allow. Use another OpenAI-compatible provider.");
-  }
-  if (!mockLlm && (!llmBaseUrl || !env.LLM_API_KEY || !env.LLM_MODEL)) {
-    throw new ConfigError("MOCK_LLM=false needs LLM_BASE_URL, LLM_API_KEY and LLM_MODEL.");
+  // The spec allows Liara's services and credits, so Liara AI is a first-class option; the other
+  // OpenAI-compatible provider is the automatic fallback (LLM_PROVIDER picks which goes first).
+  const timeoutMs = num(env.LLM_TIMEOUT_MS, 60_000);
+  const trimUrl = (u: string) => u.trim().replace(/\/$/, "");
+  const liaraAi: LlmEndpoint | null =
+    env.LIARA_AI_BASE_URL && env.LIARA_AI_KEY
+      ? { provider: "liara", baseUrl: trimUrl(env.LIARA_AI_BASE_URL), apiKey: env.LIARA_AI_KEY, model: env.LIARA_AI_MODEL || "google/gemini-3.7-flash", timeoutMs }
+      : null;
+  const other: LlmEndpoint | null =
+    env.LLM_BASE_URL && env.LLM_API_KEY && env.LLM_MODEL
+      ? { provider: "openai-compatible", baseUrl: trimUrl(env.LLM_BASE_URL), apiKey: env.LLM_API_KEY, model: env.LLM_MODEL, timeoutMs }
+      : null;
+  const preferOther = env.LLM_PROVIDER === "openai-compatible" || env.LLM_PROVIDER === "openai";
+  const llms = (preferOther ? [other, liaraAi] : [liaraAi, other]).filter((x): x is LlmEndpoint => x !== null);
+  const mockLlm = truthy(env.MOCK_LLM, llms.length === 0);
+  if (!mockLlm && llms.length === 0) {
+    throw new ConfigError("MOCK_LLM=false needs a model: LIARA_AI_BASE_URL + LIARA_AI_KEY (Liara AI), or LLM_BASE_URL + LLM_API_KEY + LLM_MODEL.");
   }
   if (liaraMode === "real" && !env.LIARA_API_TOKEN) {
     throw new ConfigError("LIARA_MODE=real needs LIARA_API_TOKEN.");
@@ -84,12 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RahandazConfig
     maxHealAttempts: num(env.MAX_HEAL_ATTEMPTS, 3),
     maxRunTokens: num(env.MAX_RUN_TOKENS, 400_000),
     toolTimeoutMs: num(env.TOOL_TIMEOUT_MS, 180_000),
-    llm: {
-      baseUrl: llmBaseUrl.replace(/\/$/, ""),
-      apiKey: env.LLM_API_KEY ?? "",
-      model: env.LLM_MODEL ?? "",
-      timeoutMs: num(env.LLM_TIMEOUT_MS, 60_000),
-    },
+    llms,
     embed:
       env.EMBED_BASE_URL && env.EMBED_API_KEY
         ? { baseUrl: env.EMBED_BASE_URL.replace(/\/$/, ""), apiKey: env.EMBED_API_KEY, model: env.EMBED_MODEL ?? "text-embedding-3-small" }
@@ -116,7 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): RahandazConfig
 
 /** Values that must never appear in any output. Registered with the redactor at startup. */
 export function configSecrets(cfg: RahandazConfig): string[] {
-  return [cfg.llm.apiKey, cfg.liara.apiToken, cfg.githubToken, cfg.embed?.apiKey ?? "", cfg.chat.botToken].filter((s) => s.length >= 6);
+  return [...cfg.llms.map((l) => l.apiKey), cfg.liara.apiToken, cfg.githubToken, cfg.embed?.apiKey ?? "", cfg.chat.botToken].filter((s) => s.length >= 6);
 }
 
 export function appAllowed(cfg: Pick<RahandazConfig, "allowedApps">, app: string): boolean {

@@ -7,6 +7,7 @@ import { AgentRuntime } from "./agent/runtime";
 import { AuditLog } from "./audit/audit-log";
 import { configSecrets, loadConfig, type RahandazConfig } from "./config/config";
 import { LiaraDocsIndex, type DocsSearch } from "./knowledge/docs-search";
+import { FallbackProvider } from "./llm/fallback";
 import { OpenAICompatibleProvider } from "./llm/openai-compatible";
 import { ScriptedBrain } from "./llm/scripted-brain";
 import type { LlmProvider } from "./llm/types";
@@ -50,7 +51,9 @@ export function createRahandaz(overrides: Partial<{ config: RahandazConfig; liar
 
   const llm =
     overrides.llm ??
-    (config.mockLlm ? new ScriptedBrain() : new OpenAICompatibleProvider({ baseUrl: config.llm.baseUrl, apiKey: config.llm.apiKey, model: config.llm.model, timeoutMs: config.llm.timeoutMs }));
+    (config.mockLlm
+      ? new ScriptedBrain()
+      : new FallbackProvider(config.llms.map((l) => new OpenAICompatibleProvider({ ...l, label: l.provider === "liara" ? "Liara AI" : undefined }))));
   const docs = overrides.docs ?? new LiaraDocsIndex(config.docsIndexDir, config.embed);
   const runtime = new AgentRuntime({ config, liara, llm, docs, audit, redactor });
   const monitor = new HealthMonitor(runtime);

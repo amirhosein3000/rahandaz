@@ -26,7 +26,7 @@ interface Step {
 
 type Decision = { call: string; args: Record<string, unknown>; say?: string } | { final: string };
 
-const INCIDENT_RE = /(چرا|why|down|slow|کند|خراب|از کار|قطع|500|502|503|هشدار|incident|سلامت|crash|کرش|مشکل)/i;
+const INCIDENT_RE = /(چرا|why|down|slow|کند|خراب|از کار|قطع|500|502|503|هشدار|incident|سلامت|crash|کرش|مشکل|بررسی|گزارش|sre|لاگ|منابع|رم|cpu)/i;
 
 export class ScriptedBrain implements LlmProvider {
   readonly name = "mock:scripted-brain";
@@ -93,7 +93,7 @@ function decide(userText: string, steps: Step[]): Decision {
 
   const repo = findRepoRef(userText);
   if (repo) return deployFlow(repo, steps);
-  if (INCIDENT_RE.test(userText) || steps.some((s) => s.name === "list_apps")) return operateFlow(userText, steps);
+  if (INCIDENT_RE.test(userText) || steps.some((s) => s.name === "list_apps" || s.name === "sre_check")) return operateFlow(userText, steps);
   return {
     final:
       "سلام، من راهی هستم، ایجنت استقرار راه‌انداز.\n" +
@@ -241,50 +241,72 @@ function proposeFix(steps: Step[], app: string | undefined): Decision {
   return { final: `${diag.titleFa}.${cite}` };
 }
 
-// ── operate: "why is my app down?" ─────────────────────────────
+// ── operate / SRE: "why is my site slow / down / 500?" ─────────
+
+const SEVERITY_FA: Record<string, string> = { critical: "🔴", warning: "🟠", ok: "🟢", unknown: "⚪" };
 
 function operateFlow(userText: string, steps: Step[]): Decision {
   const last = steps[steps.length - 1];
-  if (!last) return { call: "list_apps", args: {}, say: "اپ‌ها را بررسی می‌کنم." };
-  if (!last.ok && last.name !== "check_health") return { final: `بررسی متوقف شد: ${last.summary}` };
+  if (!last) return { call: "list_apps", args: {}, say: "اپ‌ها را پیدا می‌کنم و بررسی SRE را شروع می‌کنم." };
+  if (!last.ok && last.name !== "check_health") return { final: `بررسی متوقف شد: ${last.summary}\n${appliedSoFar(steps)}` };
+
+  const firstCheck = steps.find((s) => s.name === "sre_check");
+  const app = (firstCheck?.args.app as string | undefined) ?? undefined;
 
   switch (last.name) {
     case "list_apps": {
       const apps = (last.data.apps ?? []) as Array<{ name: string; status: string }>;
-      if (!apps.length) return { final: "روی این حساب اپی پیدا نکردم." };
-      const named = apps.find((a) => userText.includes(a.name));
+      if (!apps.length) return { final: "روی این حساب اپی پیدا نکردم. اگر لینک مخزن را بفرستید، اول آن را مستقر می‌کنم." };
+      const named = [...apps].sort((a, b) => b.name.length - a.name.length).find((a) => userText.includes(a.name));
       const target = named ?? apps.find((a) => a.status === "crashed") ?? apps[0]!;
-      return { call: "get_app_status", args: { app: target.name } };
+      return { call: "sre_check", args: { app: target.name }, say: named ? undefined : `${target.name} را بررسی می‌کنم.` };
     }
-    case "get_app_status":
-      if (last.data.health?.ok) return { call: "get_metrics", args: { app: last.args.app } };
-      return { call: "get_app_logs", args: { app: last.args.app, minutes: 15 }, say: `${last.args.app} سالم نیست (${last.data.health?.status ?? last.data.health?.error}). لاگ‌ها را می‌خوانم.` };
-    case "get_metrics": {
-      const m = last.data;
-      const memPct = m.memoryLimitMb ? Math.round((m.memoryMb / m.memoryLimitMb) * 100) : null;
-      const advice = memPct !== null && memPct > 85 ? "\nحافظه نزدیک سقف پلن است؛ اگر کندی ادامه داشت، ارتقای پلن را پیشنهاد می‌کنم." : "";
-      return {
-        final: `${last.args.app} سالم است و جواب می‌دهد. CPU ${faDigits(m.cpuPercent ?? "?")}٪، حافظه ${faDigits(m.memoryMb ?? "?")} مگابایت${memPct !== null ? ` (${faDigits(memPct)}٪ پلن)` : ""}، ری‌استارت‌ها ${faDigits(m.restarts ?? 0)}${m.responseMsP50 ? `، زمان پاسخ حدود ${faDigits(m.responseMsP50)}ms` : ""}.${advice}`,
-      };
+    case "sre_check": {
+      const r = last.data;
+      if (r.compare) return { final: verifySummary(r) };
+      const top = r.hypotheses?.[0];
+      if (!top) return { final: reportText(r, null) };
+      if (top.action) return { call: top.action.tool, args: top.action.args, say: reportText(r, top) };
+      return { final: reportText(r, top) };
     }
-    case "get_app_logs":
-      return { call: "diagnose_failure", args: { app: last.args.app } };
-    case "diagnose_failure": {
-      const top = last.data.diagnoses?.[0];
-      if (!top) return { final: "علت مشخصی در لاگ‌ها پیدا نکردم." };
-      return { call: "search_liara_docs", args: { query: top.docsQuery, k: 3 }, say: `ریشه‌ی مشکل: ${top.titleFa}.\n${top.explanationFa}` };
-    }
-    case "search_liara_docs":
-      return proposeFix(steps, steps.find((s) => s.name === "get_app_status")?.args.app as string | undefined);
     case "set_env_vars":
     case "restart_app":
-      return { call: "check_health", args: { app: last.args.app, waitSeconds: 30 }, say: "اعمال شد؛ سلامت اپ را دوباره بررسی می‌کنم." };
-    case "check_health":
-      if (last.data.ok) return { final: successSummary(steps, last.data) };
-      return { final: giveUp(steps) };
+    case "resize_app":
+      return { call: "sre_check", args: { app: app ?? (last.args.app as string), afterChange: true }, say: "اعمال شد. حالا دوباره بررسی می‌کنم تا مطمئن شوم مشکل واقعاً حل شده." };
+    case "apply_fix":
+      return { final: "تغییر کد در نسخه‌ی کاری اعمال شد؛ برای اثر روی سایت باید دوباره دیپلوی شود." };
     default:
       return { final: "بررسی تمام شد." };
   }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function reportText(r: any, top: any): string {
+  const lines = [`امتیاز سلامت ${r.app}: ${r.score} از ۱۰۰. ${r.headlineFa}`];
+  const bad = (r.checks ?? []).filter((c: { severity: string }) => c.severity === "critical" || c.severity === "warning");
+  if (bad.length) lines.push(...bad.map((c: { severity: string; detailFa: string }) => `${SEVERITY_FA[c.severity]} ${c.detailFa}`));
+  const hs = (r.hypotheses ?? []).slice(0, 3);
+  if (hs.length) {
+    lines.push("", "علت‌های احتمالی، به ترتیب احتمال:");
+    hs.forEach((h: { titleFa: string; likelihood: number }, i: number) => lines.push(`${i + 1}. ${h.titleFa} (احتمال ${Math.round(h.likelihood * 100)}٪)`));
+  }
+  if (top) {
+    lines.push("", top.explanationFa);
+    if (top.docs?.[0]) lines.push(`مستند لیارا: ${top.docs[0].url}`);
+    if (top.action) lines.push(`پیشنهاد: ${top.action.titleFa}. با تأیید شما انجامش می‌دهم و بعد نتیجه را دوباره بررسی می‌کنم.`);
+    else if (top.guidanceFa?.length) lines.push("این مورد از طریق API لیارا قابل انجام نیست؛ کارهایی که خودتان باید بکنید:", ...top.guidanceFa.map((g: string) => `• ${g}`));
+  }
+  if (!top?.action && r.limitationsFa?.length) lines.push("", ...r.limitationsFa.map((l: string) => `ⓘ ${l}`));
+  return lines.join("\n");
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function verifySummary(r: any): string {
+  const c = r.compare;
+  const lines = [c.resolved ? `✓ مشکل حل شد. امتیاز سلامت ${r.app} از ${c.scoreBefore} به ${c.scoreAfter} رسید.` : `هنوز کامل حل نشده: امتیاز سلامت از ${c.scoreBefore} به ${c.scoreAfter} رسید.`];
+  if (c.changesFa?.length) lines.push(...c.changesFa.map((x: string) => `• ${x}`));
+  if (!c.resolved && r.hypotheses?.[0]) lines.push(`قدم بعدی پیشنهادی: ${r.hypotheses[0].titleFa}`);
+  return lines.join("\n");
 }
 
 // ── final messages ─────────────────────────────────────────────

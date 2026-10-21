@@ -31,6 +31,8 @@ packages/core/
   src/tools/        typed tools: repo-tools, liara-tools, knowledge-tools, registry
   src/analyser/     deterministic repo detectors
   src/healer/       diagnosis rules + fix proposals (diffs / env changes)
+  src/sre/          SRE agent: log analysis (HTTP stats, error clusters) + report (checks, ranked causes,
+                    actions/guidance, API limitations, before/after verification); tool `sre_check`
   src/planner/      deployment plan + cost
   src/knowledge/    search_liara_docs: vendored LiaraYar BM25/RRF + data/liara-docs index
   src/llm/          OpenAI-compatible provider + ScriptedBrain (MOCK_LLM)
@@ -56,8 +58,10 @@ var/              runtime state (gitignored): audit/audit.jsonl, runs/, workspac
 - Every action goes into an append-only audit log (who, what, when, result).
 - A budget guard: refuse plans whose estimated monthly cost is above `MAX_MONTHLY_COST` without explicit approval.
 
-Also: never default to or suggest Liara's own AI service as the agent's LLM (hackathon rule). `loadConfig`
-refuses an `LLM_BASE_URL` pointing at it.
+Model: the official spec (docs/spec.md) allows Liara's services and credits, so Liara AI is a first-class,
+selectable option (`LIARA_AI_*`), alongside any other OpenAI-compatible provider (`LLM_*`); `LLM_PROVIDER`
+picks the order and the other one is an automatic fallback (`llm/fallback.ts`). The earlier "no Liara AI"
+rule from the kickoff is superseded by the spec.
 
 ## How the rules are enforced (the policy layer, not the prompt)
 
@@ -128,7 +132,7 @@ pnpm smoke:liara                # real, read-only: proves LIARA_API_TOKEN works 
 | Mode | Settings |
 |---|---|
 | Mock (demo, tests) | `LIARA_MODE=mock MOCK_LLM=true`. `github.com/<anyone>/<fixture-name>` maps to `fixtures/<name>` |
-| Mock Liara + real LLM | `LIARA_MODE=mock MOCK_LLM=false LLM_BASE_URL=… LLM_API_KEY=… LLM_MODEL=…` |
+| Mock Liara + real LLM | `LIARA_MODE=mock MOCK_LLM=false` + `LIARA_AI_BASE_URL/LIARA_AI_KEY` and/or `LLM_BASE_URL/LLM_API_KEY/LLM_MODEL` |
 | Real, dry run | `LIARA_MODE=real LIARA_API_TOKEN=…` (DRY_RUN defaults to true in real mode) |
 | Real, live | add `DRY_RUN=false ALLOWED_APPS=rahandaz-*`. **Only after the user says so.** |
 | Break it on stage | add `ALLOW_DESTRUCTIVE=true` (mock: `demo-shop` is pre-deployed) |

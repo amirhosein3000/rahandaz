@@ -34,6 +34,8 @@ export interface LiaraClient {
   listApps(): Promise<LiaraApp[]>;
   getApp(name: string): Promise<AppDetails | null>;
   getRelease(app: string, releaseId: string): Promise<Release>;
+  /** Most recent releases first (spec: GET /v1/projects/{name}/releases). */
+  listReleases(app: string): Promise<Release[]>;
   /** Build output after the `since` cursor (exclusive). */
   getBuildLogs(releaseId: string, since?: string): Promise<BuildLogLine[]>;
   /** Runtime logs since a unix timestamp (seconds). */

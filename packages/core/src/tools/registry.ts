@@ -16,6 +16,7 @@ import {
   waitForReleaseTool,
 } from "./liara-tools";
 import { diagnoseFailureTool, searchDocsTool } from "./knowledge-tools";
+import { sreCheckTool } from "./sre-tools";
 import { acquireRepoTool, analyseRepoTool, applyFixTool, proposeDeployPlanTool } from "./repo-tools";
 import type { AnyTool } from "./types";
 
@@ -27,6 +28,7 @@ export const ALL_TOOLS: AnyTool[] = [
   applyFixTool,
   searchDocsTool,
   diagnoseFailureTool,
+  sreCheckTool,
   listAppsTool,
   getAppStatusTool,
   getAppLogsTool,

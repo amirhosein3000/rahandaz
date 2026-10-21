@@ -10,13 +10,15 @@ export interface OpenAICompatibleOptions {
   model: string;
   timeoutMs?: number;
   temperature?: number;
+  /** Display name, e.g. "Liara AI". */
+  label?: string;
 }
 
 export class OpenAICompatibleProvider implements LlmProvider {
   readonly name: string;
 
   constructor(private readonly opts: OpenAICompatibleOptions) {
-    this.name = `openai-compatible:${opts.model}`;
+    this.name = `${opts.label ?? "openai-compatible"}:${opts.model}`;
   }
 
   async complete(input: { messages: ChatMessage[]; tools: ToolSchema[] }): Promise<CompletionResult> {

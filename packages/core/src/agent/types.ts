@@ -6,6 +6,7 @@ import type { ChatMessage, ToolCall } from "../llm/types";
 import type { DeployPlan } from "../planner/plan";
 import type { Workspace } from "../repo/workspace";
 import type { InjectionFinding } from "../safety/untrusted";
+import type { SreReport } from "../sre/report";
 
 export type ToolKind = "read" | "mutating" | "destructive";
 /** "plan" = an approval gate that changes nothing by itself (propose_deploy_plan). */
@@ -79,6 +80,7 @@ type EventBody =
   | { type: "policy_blocked"; tool: string; reasonFa: string }
   | { type: "injection_warning"; source: string; findings: InjectionFinding[] }
   | { type: "health"; app: string; health: HealthResult }
+  | { type: "sre_report"; report: SreReport }
   | { type: "release"; app: string; releaseId: string; state: ReleaseState; port?: number }
   | { type: "summary"; card: SummaryCard }
   | { type: "status"; status: RunStatus; reasonFa?: string }
@@ -127,5 +129,7 @@ export interface RunState {
   tainted: boolean;
   lastHealthOk: boolean | null;
   applied: AppliedAction[];
+  /** First SRE report per app in this run: the "before" for verifying a fix. */
+  sreReports: Record<string, SreReport>;
   summary: SummaryCard | null;
 }

@@ -9,6 +9,8 @@ export * from "./knowledge/docs-search";
 export * from "./repo/workspace";
 export { unifiedDiff } from "./repo/diff";
 export * from "./healer/diagnose";
+export * from "./sre/report";
+export * from "./sre/logs";
 export * from "./planner/plan";
 export * from "./policy/policy";
 export * from "./policy/fingerprint";

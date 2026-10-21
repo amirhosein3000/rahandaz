@@ -28,8 +28,22 @@ describe("audit log", () => {
 });
 
 describe("config", () => {
-  it("refuses Liara's AI service as the agent model", () => {
-    expect(() => loadConfig({ RAHANDAZ_ROOT: ROOT, MOCK_LLM: "false", LLM_BASE_URL: "https://ai.liara.ir/api/v1/abc", LLM_API_KEY: "k", LLM_MODEL: "m" })).toThrow(/Liara/);
+  it("model choice: Liara AI or another OpenAI-compatible provider, the other one as fallback", () => {
+    const both = { RAHANDAZ_ROOT: ROOT, LIARA_AI_BASE_URL: "https://ai.liara.ir/api/v1/ws1/", LIARA_AI_KEY: "lk-123456", LLM_BASE_URL: "https://api.other.example/v1", LLM_API_KEY: "ok-123456", LLM_MODEL: "m1" };
+    const a = loadConfig(both);
+    expect(a.mockLlm).toBe(false);
+    expect(a.llms.map((l) => l.provider)).toEqual(["liara", "openai-compatible"]);
+    expect(a.llms[0]!.baseUrl).toBe("https://ai.liara.ir/api/v1/ws1");
+    expect(loadConfig({ ...both, LLM_PROVIDER: "openai-compatible" }).llms[0]!.provider).toBe("openai-compatible");
+    expect(() => loadConfig({ RAHANDAZ_ROOT: ROOT, MOCK_LLM: "false" })).toThrow(/LIARA_AI/);
+  });
+
+  it("falls back to the next model when the first provider is down", async () => {
+    const { FallbackProvider } = await import("../src/llm/fallback");
+    const down = { name: "down", complete: async () => Promise.reject(new Error("503")) };
+    const up = { name: "up", complete: async () => ({ message: { role: "assistant" as const, content: "ok" } }) };
+    const r = await new FallbackProvider([down, up]).complete({ messages: [], tools: [] });
+    expect(r.message.content).toBe("ok");
   });
   it("real mode is DRY_RUN by default", () => {
     expect(loadConfig({ RAHANDAZ_ROOT: ROOT, LIARA_MODE: "real", LIARA_API_TOKEN: "t" }).dryRun).toBe(true);

@@ -6,3 +6,4 @@ export { RealLiaraClient, type RealLiaraClientOptions } from "./real/rest";
 export { listSourceFiles } from "./real/archive";
 export { MockLiaraClient, type MockLiaraClientOptions, type ChaosScenario } from "./mock/mock-client";
 export { simulateRelease, type SimulatedOutcome } from "./mock/simulate";
+export type { AppCondition } from "./mock/traffic";

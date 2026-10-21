@@ -12,6 +12,8 @@ import type { AgentRuntime } from "./runtime";
 export const CHAOS_SCENARIOS: Array<{ id: ChaosScenario; titleFa: string; descriptionFa: string }> = [
   { id: "missing_env", titleFa: "حذف یک متغیر محیطی", descriptionFa: "یک متغیر ضروری (مثل SESSION_SECRET) از اپ حذف می‌شود؛ اپ موقع شروع کرش می‌کند." },
   { id: "wrong_port", titleFa: "پورت اشتباه", descriptionFa: "متغیر PORT روی ۸۰۸۱ تنظیم می‌شود؛ برنامه روی پورتی گوش می‌دهد که لیارا چک نمی‌کند." },
+  { id: "memory_pressure", titleFa: "کندی (پرشدن RAM)", descriptionFa: "حافظه‌ی اپ به سقف پلن می‌رسد؛ سایت کند می‌شود و گاهی کرش می‌کند." },
+  { id: "db_down", titleFa: "خطای ۵۰۰ (قطع دیتابیس)", descriptionFa: "دیتابیس اپ از دسترس خارج می‌شود؛ صفحه‌هایی که به آن نیاز دارند خطای ۵۰۰ می‌دهند." },
 ];
 
 export async function breakApp(
@@ -34,7 +36,7 @@ export async function breakApp(
     touched = liara.breakApp(input.app, input.scenario);
   } else {
     // Real mode: only the PORT override is supported (adds/overwrites one env var). UNVERIFIED end-to-end on a live account.
-    if (input.scenario !== "wrong_port") return deny("در حالت واقعی فقط سناریوی «پورت اشتباه» پشتیبانی می‌شود.", "scenario unsupported in real mode");
+    if (input.scenario !== "wrong_port") return deny("این سناریو فقط روی لیارای شبیه‌سازی‌شده اجرا می‌شود؛ در حالت واقعی فقط «پورت اشتباه» ممکن است.", "scenario unsupported in real mode");
     await liara.setEnvVars(input.app, [{ key: "PORT", value: "8081" }]);
     touched = "PORT";
   }

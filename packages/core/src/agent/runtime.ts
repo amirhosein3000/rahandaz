@@ -111,6 +111,7 @@ export class AgentRuntime {
       tainted: false,
       lastHealthOk: null,
       applied: [],
+      sreReports: {},
       summary: null,
     };
     const rec: RunRecord = {

@@ -177,6 +177,20 @@ export class RealLiaraClient implements LiaraClient {
     };
   }
 
+  async listReleases(app: string): Promise<Release[]> {
+    const data = await this.request<{ releases?: Json[] }>("GET", `/v1/projects/${encodeURIComponent(app)}/releases?page=1&count=10`);
+    return (data.releases ?? []).map((r) => {
+      const state = String(r.state ?? "").toUpperCase() as ReleaseState;
+      return {
+        id: String(r._id ?? ""),
+        app,
+        state: RELEASE_STATES.has(state) ? state : "READY",
+        port: typeof r.port === "number" ? r.port : undefined,
+        createdAt: String(r.createdAt ?? ""),
+      };
+    });
+  }
+
   async getBuildLogs(releaseId: string, since?: string): Promise<BuildLogLine[]> {
     const q = since ? `?since=${encodeURIComponent(since)}` : "";
     const data = await this.request<{ buildOutput?: Json[] }>("GET", `/v2/releases/${encodeURIComponent(releaseId)}/build-logs${q}`);

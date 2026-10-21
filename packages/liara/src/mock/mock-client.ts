@@ -29,8 +29,9 @@ import type {
 } from "../types";
 import { simulateRelease, type SimulatedOutcome } from "./simulate";
 import { snapshotDir, type FileSnapshot } from "./snapshot";
+import { conditionMetrics, trafficLines, type AppCondition } from "./traffic";
 
-export type ChaosScenario = "missing_env" | "wrong_port";
+export type ChaosScenario = "missing_env" | "wrong_port" | "memory_pressure" | "db_down";
 
 export interface MockSeedApp {
   name: string;
@@ -75,6 +76,8 @@ interface MockApp {
   runtime: SimulatedOutcome | null;
   logs: AppLogLine[];
   restarts: number;
+  /** Production condition affecting traffic, metrics and latency (set by chaos, cleared by the right fix). */
+  condition: AppCondition;
 }
 
 const LINE_MS = 280;
@@ -128,6 +131,7 @@ export class MockLiaraClient implements LiaraClient {
       runtime: null,
       logs: [],
       restarts: 0,
+      condition: "ok",
     };
     this.apps.set(input.name, app);
     return app;
@@ -269,20 +273,34 @@ export class MockLiaraClient implements LiaraClient {
   async getAppLogs(name: string, sinceUnix: number): Promise<AppLogLine[]> {
     const app = this.requireApp(name);
     const since = sinceUnix * 1000;
-    return app.logs.filter((l) => Date.parse(l.ts) >= since).slice(-300);
+    // Stored lifecycle lines + synthetic traffic of a running app, merged in time order.
+    const running = app.scale === 1 && app.runtime && app.runtime.httpStatus > 0 && app.runtime.httpStatus < 500;
+    const traffic = running ? trafficLines(app.name, app.condition, this.now()) : [];
+    return [...app.logs, ...traffic]
+      .filter((l) => Date.parse(l.ts) >= since)
+      .sort((a, b) => a.ts.localeCompare(b.ts))
+      .slice(-300);
+  }
+
+  async listReleases(name: string): Promise<Release[]> {
+    const app = this.requireApp(name);
+    const out: Release[] = [];
+    for (const r of [...app.releases].reverse().slice(0, 10)) out.push(await this.getRelease(name, r.id));
+    return out;
   }
 
   async getMetrics(name: string): Promise<MetricsSummary> {
     const app = this.requireApp(name);
     const healthy = this.status(app) === "running" && app.runtime?.httpStatus === 200;
     const plan = FALLBACK_PLANS.find((p) => p.id === app.planId);
-    const jitter = (app.name.length * 7) % 5;
+    const m = conditionMetrics(app.condition, plan?.ramMb ?? 512, app.name);
     return {
-      cpuPercent: app.scale === 0 ? 0 : healthy ? 9 + jitter : 1,
-      memoryMb: app.scale === 0 ? 0 : healthy ? 168 + jitter * 11 : 41,
+      cpuPercent: app.scale === 0 ? 0 : healthy ? m.cpu : 1,
+      memoryMb: app.scale === 0 ? 0 : healthy ? m.memMb : 41,
       memoryLimitMb: plan?.ramMb ?? null,
       restarts: app.restarts,
-      responseMsP50: healthy ? 84 + jitter * 6 : null,
+      // Liara's API exposes no response-time metric (UNVERIFIED for the real API); the mock models one.
+      responseMsP50: healthy ? m.p50 : null,
     };
   }
 
@@ -315,7 +333,8 @@ export class MockLiaraClient implements LiaraClient {
     if (!app.runtime) return { ok: false, url, status: 404, latencyMs: 35, error: "no release is live yet" };
     const s = app.runtime.httpStatus;
     if (s === 0) return { ok: false, url, status: 502, latencyMs: 3000, error: "upstream connect error (app not listening)" };
-    return { ok: s < 500, url, status: s, latencyMs: s < 500 ? 96 : 210 };
+    const slow = app.condition === "memory_pressure";
+    return { ok: s < 500, url, status: s, latencyMs: s >= 500 ? 210 : slow ? 2700 : 96 };
   }
 
   // ── mutating ─────────────────────────────────────────────────
@@ -344,7 +363,11 @@ export class MockLiaraClient implements LiaraClient {
 
   async resizeApp(name: string, planId: string): Promise<void> {
     const app = this.requireApp(name);
+    const before = FALLBACK_PLANS.find((p) => p.id === app.planId)?.ramMb ?? 0;
+    const after = FALLBACK_PLANS.find((p) => p.id === planId)?.ramMb ?? 0;
     app.planId = planId;
+    // More memory relieves memory pressure (the leak-free part of the working set now fits).
+    if (app.condition === "memory_pressure" && after > before) app.condition = "ok";
     this.rerun(app, `plan changed to ${planId}`);
   }
 
@@ -376,6 +399,12 @@ export class MockLiaraClient implements LiaraClient {
   /** Simulates an operator mistake. Returns the env key it touched. */
   breakApp(name: string, scenario: ChaosScenario): string {
     const app = this.requireApp(name);
+    if (scenario === "memory_pressure" || scenario === "db_down") {
+      app.condition = scenario;
+      if (scenario === "memory_pressure") app.restarts += 2;
+      this.appendLogs(app, [scenario === "memory_pressure" ? "[system] memory usage above 90% of the plan limit" : "[system] upstream database 10.10.0.5:5432 stopped accepting connections"]);
+      return scenario === "memory_pressure" ? "RAM" : "DATABASE";
+    }
     if (scenario === "wrong_port") {
       app.env.set("PORT", "8081");
       this.rerun(app, "env updated (PORT)");

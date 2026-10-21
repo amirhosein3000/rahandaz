@@ -7,6 +7,9 @@
 import { appAllowed } from "../config/config";
 import type { AgentRuntime } from "./runtime";
 
+/** A response slower than this is treated as an incident. */
+const SLOW_MS = 2000;
+
 export class HealthMonitor {
   private last = new Map<string, boolean>();
   private timer: NodeJS.Timeout | null = null;
@@ -34,14 +37,16 @@ export class HealthMonitor {
       const apps = (await this.runtime.liara.listApps()).filter((a) => appAllowed(this.runtime.config, a.name) && a.isDeployed && a.scale === 1);
       for (const app of apps) {
         const health = await this.runtime.liara.checkHealth(app.name);
+        // Up but very slow counts as unhealthy too: users feel it before anything crashes.
+        const slow = health.ok && (health.latencyMs ?? 0) >= SLOW_MS;
+        const good = health.ok && !slow;
         const prev = this.last.get(app.name);
-        this.last.set(app.name, health.ok);
-        if (prev === true && !health.ok && !this.activeRunFor(app.name)) {
-          const run = this.runtime.startRun({
-            trigger: "incident",
-            actor: "system",
-            message: `هشدار خودکار: اپ ${app.name} از دسترس خارج شد (${health.status ?? health.error ?? "بدون پاسخ"}). چرا از کار افتاده و چطور درستش کنیم؟`,
-          });
+        this.last.set(app.name, good);
+        if (prev === true && !good && !this.activeRunFor(app.name)) {
+          const message = slow
+            ? `هشدار خودکار: اپ ${app.name} کند شده (پاسخ در ${health.latencyMs}ms). علتش چیست و چطور درستش کنیم؟`
+            : `هشدار خودکار: اپ ${app.name} از دسترس خارج شد (${health.status ?? health.error ?? "بدون پاسخ"}). چرا از کار افتاده و چطور درستش کنیم؟`;
+          const run = this.runtime.startRun({ trigger: "incident", actor: "system", message });
           started.push(run.id);
         }
       }
