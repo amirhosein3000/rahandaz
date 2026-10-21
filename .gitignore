@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+# runtime state (audit log, runs, cloned repos)
+var/
+.workspaces/
+.DS_Store
+Thumbs.db
