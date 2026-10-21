@@ -1,0 +1,8 @@
+{
+  "name": "node-no-start",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Notes API",
+  "main": "index.js",
+  "scripts": { "dev": "node --watch index.js" }
+}

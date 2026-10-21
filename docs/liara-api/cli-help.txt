@@ -1,0 +1,334 @@
+# @liara/cli 9.6.0 help output (captured 2026-10-21)
+
+$ liara  --help
+The command line interface for Liara
+
+VERSION
+  @liara/cli/9.6.0 win32-x64 node-v24.11.1
+
+USAGE
+  $ liara [COMMAND]
+
+TOPICS
+  account  display commands for working with accounts
+  app      display commands for working with apps
+  bucket   display commands for working with buckets
+  db       display commands for working with databases
+  disk     display commands for working with disks
+  env      display commands for configuring app environment variables
+  mail     display commands for working with mail servers
+  network  create network
+  plan     display commands for working with plans
+  team     display commands for working with teams
+  vm       create a vm
+  zone     display commands for working with dns zones
+
+COMMANDS
+  autocomplete  Display autocomplete installation instructions.
+  create        create an app
+  delete        delete an app
+  deploy        deploy an app
+  help          Display help for liara.
+  init          create a liara.json file
+  login         login to your account
+  logs          fetch the logs of an app
+  restart       restart an app
+  shell         run a command in a running applet
+  start         start an app
+  stop          stop an app
+  update-port   update an app's port
+  version
+  whoami        show the account and team that commands run as
+
+
+$ liara deploy --help
+deploy an app
+
+USAGE
+  $ liara deploy [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [--path <value>] [--platform <value>] [-a
+    <value>] [-p <value>] [-i <value>] [--detach] [--no-app-logs] [--args
+    <value>] [--build-arg <value>...] [-m <value>] [-d <value>...] [--no-cache]
+    [-f <value>] [-b iran|germany] [--liara-json <value>]
+
+FLAGS
+  -a, --app=<value>              app id
+  -b, --build-location=<option>  name of the build's location
+                                 <options: iran|germany>
+  -d, --disks=<value>...         mount a disk
+  -f, --dockerfile=<value>       name of the Dockerfile (default is
+                                 "PATH/Dockerfile")
+  -h, --help                     Show CLI help.
+  -i, --image=<value>            docker image to deploy
+  -m, --message=<value>          the release message
+  -p, --port=<value>             the port that your app listens to
+      --account=<value>          temporarily switch to a different account
+      --api-token=<value>        your api token to use for authentication
+      --args=<value>             docker image entrypoint args
+      --build-arg=<value>...     docker image build args
+      --debug                    show debug logs
+      --detach                   run build in background
+      --liara-json=<value>       [default: liara.json] name of the liara config
+                                 file (default is "PATH/liara.json")
+      --no-app-logs              do not stream app logs after deployment
+      --no-cache                 do not use cache when building the image
+      --path=<value>             app path in your computer
+      --platform=<value>         the platform your app needs to run
+      --team-id=<value>          your team id (defaults to the team selected via
+                                 'liara team:use')
+
+DESCRIPTION
+  deploy an app
+
+
+$ liara app --help
+display commands for working with apps
+
+USAGE
+  $ liara app COMMAND
+
+COMMANDS
+  app create       create an app
+  app delete       delete an app
+  app list         list available apps
+  app logs         fetch the logs of an app
+  app ls           list available apps
+  app remove       delete an app
+  app restart      restart an app
+  app rm           delete an app
+  app shell        run a command in a running applet
+  app start        start an app
+  app stop         stop an app
+  app update-port  update an app's port
+
+
+$ liara app:create --help
+create an app
+
+USAGE
+  $ liara app create [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [-a <value>] [--platform <value>] [--plan
+    <value>] [--feature-plan <value>] [-n <value>] [-r true|false]
+
+FLAGS
+  -a, --app=<value>           app id
+  -h, --help                  Show CLI help.
+  -n, --network=<value>       network
+  -r, --read-only=<option>    read-only filesystem
+                              <options: true|false>
+      --account=<value>       temporarily switch to a different account
+      --api-token=<value>     your api token to use for authentication
+      --debug                 show debug logs
+      --feature-plan=<value>  feature bundle plan
+      --plan=<value>          plan
+      --platform=<value>      platform
+      --team-id=<value>       your team id (defaults to the team selected via
+                              'liara team:use')
+
+DESCRIPTION
+  create an app
+
+ALIASES
+  $ liara create
+
+
+$ liara app:logs --help
+fetch the logs of an app
+
+USAGE
+  $ liara app logs [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [-a <value>] [-s <value>] [-t] [-f] [-c] [-r
+    <value>] [-l]
+
+FLAGS
+  -a, --app=<value>        app id
+  -c, --colorize           colorize log output
+  -f, --follow             follow log output
+  -h, --help               Show CLI help.
+  -l, --last-lines
+  -r, --release=<value>    show logs for a specific release (e.g. v1, v2)
+  -s, --since=<value>      show logs since a specific time in the past (e.g. "1
+                           hour ago")
+  -t, --timestamps         show timestamps
+      --account=<value>    temporarily switch to a different account
+      --api-token=<value>  your api token to use for authentication
+      --debug              show debug logs
+      --team-id=<value>    your team id (defaults to the team selected via
+                           'liara team:use')
+
+DESCRIPTION
+  fetch the logs of an app
+
+ALIASES
+  $ liara logs
+
+
+$ liara env --help
+display commands for configuring app environment variables
+
+USAGE
+  $ liara env COMMAND
+
+COMMANDS
+  env list   list environment variables of an app
+  env ls     list environment variables of an app
+  env set    specifying environment variables to an app
+  env unset  remove environment variables from an app
+
+
+$ liara env:set --help
+specifying environment variables to an app
+
+USAGE
+  $ liara env set [ENV...] [-h] [--debug] [--api-token <value>]
+    [--account <value>] [--team-id <value>] [-a <value>] [-f]
+
+ARGUMENTS
+  ENV...  key=value pair
+
+FLAGS
+  -a, --app=<value>        app id
+  -f, --force              force update
+  -h, --help               Show CLI help.
+      --account=<value>    temporarily switch to a different account
+      --api-token=<value>  your api token to use for authentication
+      --debug              show debug logs
+      --team-id=<value>    your team id (defaults to the team selected via
+                           'liara team:use')
+
+DESCRIPTION
+  specifying environment variables to an app
+
+
+$ liara env:list --help
+list environment variables of an app
+
+USAGE
+  $ liara env list [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [-a <value>] [--columns <value> | -x] [--filter
+    <value>] [--no-header | [--csv | --no-truncate]] [--output csv|json|yaml |
+    | ] [--sort <value>]
+
+FLAGS
+  -a, --app=<value>        app id
+  -h, --help               Show CLI help.
+  -x, --extended           show extra columns
+      --account=<value>    temporarily switch to a different account
+      --api-token=<value>  your api token to use for authentication
+      --columns=<value>    only show provided columns (comma-separated)
+      --csv                output is csv format [alias: --output=csv]
+      --debug              show debug logs
+      --filter=<value>     filter property by partial string matching, ex:
+                           name=foo
+      --no-header          hide table header from output
+      --no-truncate        do not truncate output to fit screen
+      --output=<option>    output in a more machine friendly format
+                           <options: csv|json|yaml>
+      --sort=<value>       property to sort by (prepend '-' for descending)
+      --team-id=<value>    your team id (defaults to the team selected via
+                           'liara team:use')
+
+DESCRIPTION
+  list environment variables of an app
+
+ALIASES
+  $ liara env ls
+
+
+$ liara app:restart --help
+restart an app
+
+USAGE
+  $ liara app restart [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [-a <value>]
+
+FLAGS
+  -a, --app=<value>        app id
+  -h, --help               Show CLI help.
+      --account=<value>    temporarily switch to a different account
+      --api-token=<value>  your api token to use for authentication
+      --debug              show debug logs
+      --team-id=<value>    your team id (defaults to the team selected via
+                           'liara team:use')
+
+DESCRIPTION
+  restart an app
+
+ALIASES
+  $ liara restart
+
+
+$ liara app:list --help
+list available apps
+
+USAGE
+  $ liara app list [-h] [--debug] [--api-token <value>] [--account
+    <value>] [--team-id <value>] [--columns <value> | -x] [--filter <value>]
+    [--no-header | [--csv | --no-truncate]] [--output csv|json|yaml |  | ]
+    [--sort <value>]
+
+FLAGS
+  -h, --help               Show CLI help.
+  -x, --extended           show extra columns
+      --account=<value>    temporarily switch to a different account
+      --api-token=<value>  your api token to use for authentication
+      --columns=<value>    only show provided columns (comma-separated)
+      --csv                output is csv format [alias: --output=csv]
+      --debug              show debug logs
+      --filter=<value>     filter property by partial string matching, ex:
+                           name=foo
+      --no-header          hide table header from output
+      --no-truncate        do not truncate output to fit screen
+      --output=<option>    output in a more machine friendly format
+                           <options: csv|json|yaml>
+      --sort=<value>       property to sort by (prepend '-' for descending)
+      --team-id=<value>    your team id (defaults to the team selected via
+                           'liara team:use')
+
+DESCRIPTION
+  list available apps
+
+ALIASES
+  $ liara app ls
+
+
+$ liara db --help
+display commands for working with databases
+
+USAGE
+  $ liara db COMMAND
+
+TOPICS
+  db backup  display commands for working with database backups
+
+COMMANDS
+  db create  create a new database
+  db list    list available databases
+  db ls      list available databases
+  db remove  remove a database
+  db resize  resize a database
+  db rm      remove a database
+  db start   start a database
+  db stop    stop a database
+
+
+$ liara disk --help
+display commands for working with disks
+
+USAGE
+  $ liara disk COMMAND
+
+COMMANDS
+  disk create  create a disk
+
+
+$ liara plan --help
+display commands for working with plans
+
+USAGE
+  $ liara plan COMMAND
+
+COMMANDS
+  plan list  list available plans
+  plan ls    list available plans
+

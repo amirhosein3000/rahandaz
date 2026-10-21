@@ -1,0 +1,4 @@
+#!/usr/bin/env php
+<?php
+// Laravel artisan entry point (trimmed fixture)
+require __DIR__."/vendor/autoload.php";

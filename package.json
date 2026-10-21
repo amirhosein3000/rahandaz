@@ -1,0 +1,30 @@
+{
+  "name": "rahandaz",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Rahandaz (راه‌انداز): an AI agent that ships a repo to Liara and keeps it healthy, safely, in Persian.",
+  "packageManager": "pnpm@9.15.9",
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "dev": "pnpm --filter @rahandaz/web dev",
+    "build": "pnpm --filter @rahandaz/web build",
+    "start": "pnpm --filter @rahandaz/web start",
+    "cli": "tsx --env-file-if-exists=.env apps/cli/src/main.ts",
+    "smoke:liara": "tsx --env-file-if-exists=.env packages/liara/scripts/smoke.ts",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "test": "vitest run",
+    "gates": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^4.0.0"
+  }
+}
