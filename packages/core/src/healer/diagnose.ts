@@ -50,6 +50,8 @@ export interface Diagnosis {
     | "http_5xx";
   titleFa: string;
   explanationFa: string;
+  /** One sentence for a non-engineer: no ports, builds or file jargon. */
+  plainFa: string;
   evidence: string[];
   confidence: number;
   /** Query for search_liara_docs, so the explanation can cite the docs. */
@@ -87,6 +89,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
     out.push({
       rule: "bad_base_image",
       titleFa: "ایمیج پایه‌ی Dockerfile وجود ندارد",
+      plainFa: "نام یکی از پایه‌های پروژه (در فایل Dockerfile) اشتباه نوشته شده و لیارا نتوانست پیدایش کند؛ درستش می‌کنم.",
       explanationFa: `بیلد در همان قدم اول (FROM) شکست خورد: ایمیج «${bad}» در رجیستری پیدا نشد. معمولاً اشتباه تایپی در نام یا تگ است.`,
       evidence: [pull],
       confidence: 0.95,
@@ -101,6 +104,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
     out.push({
       rule: "missing_start_script",
       titleFa: "اسکریپت start در package.json تعریف نشده",
+      plainFa: "در پروژه نوشته نشده سایت با چه دستوری روشن شود؛ یک خط کوچک به آن اضافه می‌کنم.",
       explanationFa: "بیلد موفق بود ولی موقع اجرا npm start شکست خورد، چون package.json اسکریپت start ندارد. برنامه مدام ری‌استارت می‌شود.",
       evidence: [noStart],
       confidence: 0.97,
@@ -117,6 +121,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
     out.push({
       rule: "missing_env",
       titleFa: `متغیر محیطی ${key} تنظیم نشده`,
+      plainFa: `سایت برای کار کردن به تنظیمی به نام ${key} نیاز دارد که هنوز وارد نشده.`,
       explanationFa: `کد برنامه بدون ${key} اجرا نمی‌شود و این متغیر روی اپ تعریف نشده است${buildFailed ? "؛ چون در زمان بیلد خوانده می‌شود، بیلد شکست خورد" : "؛ برنامه هنگام شروع کرش می‌کند"}.`,
       evidence: [missingEnvLine],
       confidence: 0.95,
@@ -137,6 +142,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
     out.push({
       rule: "missing_app_key",
       titleFa: "APP_KEY برای Laravel تنظیم نشده",
+      plainFa: "سایت یک کلید امنیتی لازم دارد که ساخته نشده بود؛ خودم یک کلید امن می‌سازم.",
       explanationFa: "اپ بالا آمده ولی هر درخواست خطای ۵۰۰ می‌دهد: Laravel بدون APP_KEY نمی‌تواند کوکی‌ها و سشن را رمز کند. یک کلید تصادفی روی سرور می‌سازیم؛ مقدارش را نه مدل می‌بیند نه لاگ.",
       evidence: [appKey.slice(0, 220)],
       confidence: 0.97,
@@ -157,6 +163,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
     out.push({
       rule: "unpinned_dependency",
       titleFa: "نسخه‌ی Werkzeug با Flask 2.2 سازگار نیست",
+      plainFa: "یکی از کتابخانه‌های پروژه خودبه‌خود به نسخه‌ای جدید رفته که با بقیه جور نیست؛ نسخه‌ی سازگار را ثابت می‌کنم.",
       explanationFa: "Werkzeug در requirements.txt پین نشده و نسخه‌ی ۳ نصب شده که url_quote را حذف کرده؛ Flask 2.2 هنگام import کرش می‌کند. نسخه‌ی سازگار را پین می‌کنیم.",
       evidence: [urlQuote],
       confidence: 0.96,
@@ -180,6 +187,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
       out.push({
         rule: "env_port_override",
         titleFa: "متغیر محیطی PORT با پورت اپ یکی نیست",
+        plainFa: "یک تنظیم اشتباه باعث شده سایت جایی منتظر بماند که لیارا سراغش نمی‌رود؛ آن را برمی‌گردانم.",
         explanationFa: `لیارا پورت ${probePort} را چک می‌کند ولی متغیر PORT روی اپ باعث شده برنامه روی ${listenPort} گوش بدهد. PORT را به ${probePort} برمی‌گردانیم (بازنویسی متغیر = عملیات حساس، تأیید دوم لازم است).`,
         evidence: [listening!, refused],
         confidence: 0.93,
@@ -190,6 +198,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
       out.push({
         rule: "port_mismatch",
         titleFa: `برنامه روی ${listenPort} گوش می‌دهد، لیارا ${probePort} را چک می‌کند`,
+        plainFa: "سایت جایی منتظر بازدیدکننده است که لیارا سراغش نمی‌رود؛ این دو را با هم یکی می‌کنم.",
         explanationFa: `ریلیز با پورت ${probePort} ساخته شد ولی لاگ برنامه نشان می‌دهد روی ${listenPort} بالا آمده؛ health check به پورت خالی می‌خورد و ریلیز UNHEALTHY می‌شود. پورت liara.json را با پورت واقعی برنامه یکی می‌کنیم و دوباره دیپلوی می‌کنیم.`,
         evidence: [listening!, refused],
         confidence: 0.94,
@@ -206,6 +215,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
       out.push({
         rule: "crash_unknown",
         titleFa: "برنامه با خطا متوقف می‌شود",
+        plainFa: "سایت موقع روشن شدن از کار می‌افتد و علت شناخته‌شده‌ای پیدا نکردم؛ لازم است برنامه‌نویس کد را ببیند.",
         explanationFa: "خطای شناخته‌شده‌ای پیدا نکردم؛ خطوط مهم لاگ را آورده‌ام. پیشنهاد خودکاری ندارم و نیاز به بررسی کد دارد.",
         evidence: lines.filter((l) => /error|exception|traceback|exited/i.test(l)).slice(-5),
         confidence: 0.4,
@@ -216,6 +226,7 @@ export function diagnose(input: DiagnoseInput): Diagnosis[] {
       out.push({
         rule: "http_5xx",
         titleFa: `اپ خطای ${input.health.status} برمی‌گرداند`,
+        plainFa: "سایت روشن است ولی به بازدیدکننده‌ها صفحه‌ی خطا نشان می‌دهد.",
         explanationFa: "اپ بالا است ولی به درخواست‌ها خطای سرور می‌دهد و لاگ دلیل مشخصی ندارد.",
         evidence: [`GET ${input.health.url} → ${input.health.status}`],
         confidence: 0.35,

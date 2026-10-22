@@ -65,6 +65,7 @@ export const diagnoseFailureTool = defineTool({
           rule: d.rule,
           titleFa: d.titleFa,
           explanationFa: d.explanationFa,
+          plainFa: d.plainFa,
           confidence: d.confidence,
           docsQuery: d.docsQuery,
           fix: d.fix

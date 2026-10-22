@@ -50,10 +50,10 @@ export const STATUS_FA: Record<string, string> = {
 };
 
 export const OUTCOME_FA: Record<string, string> = {
-  healthy: "سالم و در دسترس",
-  failed: "ناموفق",
+  healthy: "سایت روشن و سالم است",
+  failed: "کار به نتیجه نرسید",
   dry_run: "اجرای آزمایشی (DRY_RUN)",
-  answered: "پاسخ داده شد",
+  answered: "انجام شد",
   waiting_user: "منتظر یک قدم از طرف شما",
   stopped: "متوقف شد",
 };

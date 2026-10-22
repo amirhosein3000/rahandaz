@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { SreReport } from "@rahandaz/core";
 import { faNum, toman } from "@/lib/fa";
+import { useTechView } from "@/lib/view";
 import { Fa } from "./fa";
 import { Badge, Card } from "./ui";
 
@@ -35,8 +36,9 @@ function ScoreRing({ score }: { score: number }) {
 
 /** The SRE agent's report: what was checked, what is wrong, why, and what to do. */
 export function SreReportCard({ report }: { report: SreReport }) {
-  const [open, setOpen] = useState<number | null>(0);
+  const [tech] = useTechView();
   const st = STATUS[report.status];
+  const top = report.hypotheses[0];
   return (
     <Card tone={st.tone === "ok" ? "ok" : st.tone === "bad" ? "bad" : "warn"} className="overflow-hidden">
       <div className="flex items-center gap-3 border-b border-line p-4">
@@ -68,6 +70,54 @@ export function SreReportCard({ report }: { report: SreReport }) {
         </div>
       )}
 
+      {!tech && (
+        <>
+          {top && !report.compare && (
+            <div className="space-y-2 p-4 text-[13.5px] leading-7">
+              <div className="text-[12px] text-muted">{report.status === "healthy" ? "پیشنهاد" : "علت اصلی"}</div>
+              <div className="font-bold">
+                <Fa text={top.titleFa} />
+              </div>
+              <p>
+                <Fa text={top.explanationFa} />
+              </p>
+              {top.action && (
+                <p className="rounded-lg border border-accent/40 bg-accent-soft px-3 py-2">
+                  <span className="font-semibold text-accent">راه‌حل: </span>
+                  <Fa text={top.action.titleFa} />
+                  {top.action.costDeltaToman ? <span className="text-muted"> ({top.action.costDeltaToman > 0 ? "+" : "−"}{toman(Math.abs(top.action.costDeltaToman))} در ماه)</span> : null}
+                </p>
+              )}
+              {!top.action && top.guidanceFa.length > 0 && (
+                <div>
+                  <div className="text-[12px] text-muted">کاری که باید خودتان انجام دهید</div>
+                  <ul className="space-y-0.5">
+                    {top.guidanceFa.map((g, j) => (
+                      <li key={j}>
+                        • <Fa text={g} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <details className="border-t border-line text-[12.5px]">
+            <summary className="cursor-pointer select-none px-4 py-2 text-muted">جزئیات فنی بررسی</summary>
+            <Technical report={report} />
+          </details>
+        </>
+      )}
+      {tech && <Technical report={report} />}
+    </Card>
+  );
+}
+
+/** Checks, every ranked cause with evidence, log stats and API limitations. */
+function Technical({ report }: { report: SreReport }) {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-line p-4 sm:grid-cols-4">
         {report.checks.map((c) => (
           <div key={c.id} className="min-w-0" title={c.detailFa}>
@@ -164,6 +214,6 @@ export function SreReportCard({ report }: { report: SreReport }) {
           </ul>
         </details>
       )}
-    </Card>
+    </>
   );
 }

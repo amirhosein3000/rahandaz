@@ -9,21 +9,31 @@ export function buildSummary(
   const lastDomain = [...events].reverse().find((e) => e.type === "domain_status");
   const dryRunHappened = events.some((e) => e.type === "tool_result" && e.dryRun);
   const touchedApp = Boolean(run.appName);
+  const lastResult = [...events].reverse().find((e) => e.type === "tool_result");
+  const endedOnError = lastResult?.type === "tool_result" && !lastResult.ok;
   let outcome: SummaryCard["outcome"];
   if (opts.status === "stopped") outcome = "stopped";
   else if (dryRunHappened) outcome = "dry_run";
   else if (run.lastHealthOk === true && touchedApp) outcome = "healthy";
   else if (lastDomain?.type === "domain_status" && lastDomain.status.next.who === "user") outcome = "waiting_user";
-  else if (!touchedApp && opts.status === "completed") outcome = "answered";
+  else if (!touchedApp && opts.status === "completed" && !endedOnError) outcome = "answered";
   else outcome = "failed";
 
   const firstDiagnosis = events.find((e) => e.type === "diagnosis" && e.diagnoses.length > 0);
-  const rootCauseFa = firstDiagnosis && firstDiagnosis.type === "diagnosis" ? firstDiagnosis.diagnoses[0]!.titleFa : null;
+  // SRE runs: the first report's top cause is the root cause; what was applied after it are the fixes.
+  const firstSre = events.find((e) => e.type === "sre_report" && e.report.status !== "healthy" && e.report.hypotheses.length > 0);
+  const rootCauseFa =
+    firstDiagnosis && firstDiagnosis.type === "diagnosis"
+      ? firstDiagnosis.diagnoses[0]!.titleFa
+      : firstSre && firstSre.type === "sre_report"
+        ? firstSre.report.hypotheses[0]!.titleFa
+        : null;
 
   const fixesFa = run.appliedFixes.map((id) => run.fixes[id]?.titleFa).filter((t): t is string => Boolean(t));
   for (const e of events) {
     if (e.type === "tool_result" && e.ok && e.tool === "set_env_vars" && firstDiagnosis && e.seq > firstDiagnosis.seq) fixesFa.push(e.summaryFa);
   }
+  if (firstSre) for (const a of run.applied) if (!fixesFa.includes(a.titleFa)) fixesFa.push(a.titleFa);
 
   return {
     outcome,

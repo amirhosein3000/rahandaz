@@ -173,6 +173,13 @@ and the break-it-on-stage incident loop.
    one approval) and the re-check shows before/after. Test: `sre.test.ts`. The demo script is
    `docs/demo-script.md`; the submission doc is `docs/SUBMISSION.md` (keep both in sync with features).
 
+**Users are not engineers.** The console defaults to the *simple view* (`apps/web/lib/view.ts`, `rz-view` in
+localStorage): one conversation, plain questions on approval cards (address, cost, one button), technical
+details folded under «جزئیات فنی»; the «نمای فنی» switch in the header brings back the timeline, API calls,
+mode badges and audit/limits links. Agent messages avoid ports/builds/env jargon: diagnoses carry a one-line
+`plainFa`, `scripted-brain.ts` speaks plainly, and `prompt.ts` tells real models the same. New user-facing
+text: write it for a shop owner, put the engineer detail behind the technical view.
+
 Redactor gotcha: `redactDeep` replaces any object field named `value` (or token/secret/password…). Never
 name a user-visible field `value` in events or tool data; use `text`.
 

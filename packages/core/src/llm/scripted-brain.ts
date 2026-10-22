@@ -140,9 +140,13 @@ function describeDenied(step: Step): string {
 
 function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
   const last = steps[steps.length - 1];
-  if (!last) return { call: "acquire_repo", args: { source: repo }, say: "مخزن را دریافت و تحلیل می‌کنم." };
+  if (!last) return { call: "acquire_repo", args: { source: repo }, say: "پروژه را از گیت‌هاب برمی‌دارم و نگاهی به آن می‌اندازم." };
   if (!last.ok && !["wait_for_release", "check_health"].includes(last.name)) {
-    return { final: `در مرحله‌ی «${last.name}» به خطا خوردم: ${last.summary}${last.error ? `\n(${last.error})` : ""}\n${appliedSoFar(steps)}` };
+    // Plain words for the user; the raw error stays on the technical timeline.
+    if (last.name === "acquire_repo") {
+      return { final: `نتوانستم این پروژه را از گیت‌هاب بردارم. لطفاً لینک را چک کنید؛ پروژه باید عمومی (public) باشد.\n${appliedSoFar(steps)}` };
+    }
+    return { final: `این قدم انجام نشد: ${last.summary}\n${appliedSoFar(steps)}` };
   }
 
   const planIdx = steps.findIndex((s) => s.name === "propose_deploy_plan" && s.ok);
@@ -160,17 +164,16 @@ function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
     case "analyse_repo": {
       const a = last.data;
       if (plan && app) {
-        return { call: "deploy_app", args: { app, port: a.port, platform: a.platform }, say: `اصلاح اعمال شد؛ نسخه‌ی جدید را روی پورت ${faDigits(a.port)} دیپلوی می‌کنم.` };
+        return { call: "deploy_app", args: { app, port: a.port, platform: a.platform }, say: "اصلاح انجام شد؛ سایت را دوباره منتشر می‌کنم." };
       }
-      const lines = [`این یک پروژه‌ی ${a.stackLabel} است (پلتفرم ${a.platform}، پورت ${faDigits(a.port)}).`];
-      if (a.env?.length) lines.push(`متغیرهای محیطی لازم: ${a.env.map((e: { name: string }) => e.name).join("، ")}.`);
-      if (a.injection?.length) lines.push(`در ${a.injection.map((i: { file: string }) => i.file).join("، ")} متنی خطاب به هوش مصنوعی بود که آن را نادیده گرفتم؛ فقط داده است، نه دستور.`);
-      const risks = (a.warnings ?? []).filter((w: { code: string }) => w.code !== "injection_text");
-      if (risks.length) lines.push(`ریسک‌ها: ${risks.map((w: { messageFa: string }) => w.messageFa).join(" ")}`);
-      lines.push("نقشه‌ی استقرار را برای تأیید شما آماده می‌کنم.");
+      // Plain words: what it is and what happens next. Ports, platforms, env names and risks are on the plan card's technical section.
+      const lines = [`پروژه‌ات را شناختم: یک سایت ${a.stackLabel} است.`];
+      if (a.env?.length) lines.push("چند تنظیم لازم دارد که خودم آماده‌شان می‌کنم؛ اگر چیزی را فقط شما بدانید، می‌پرسم.");
+      if (a.injection?.length) lines.push("داخل پروژه متنی بود که سعی می‌کرد به من دستور بدهد؛ نادیده‌اش گرفتم. فقط از شما دستور می‌گیرم.");
+      lines.push("حالا پیشنهادم را با هزینه‌اش نشان می‌دهم؛ تا تأیید نکنید کاری انجام نمی‌شود.");
       // "publish a new version on app X": deploy onto that existing app instead of a new one.
       const target = repoUserText.match(/اپ\s+([a-z0-9][a-z0-9-]{2,31})/)?.[1];
-      if (target) lines.splice(lines.length - 1, 1, `نسخه‌ی جدید را روی اپ موجود ${target} منتشر می‌کنم؛ نقشه را برای تأیید آماده می‌کنم.`);
+      if (target) lines.splice(lines.length - 1, 1, `نسخه‌ی جدید را روی سایت فعلی ${target} منتشر می‌کنم؛ اول برای تأیید نشانت می‌دهم.`);
       return { call: "propose_deploy_plan", args: target ? { appName: target } : {}, say: lines.join("\n") };
     }
 
@@ -182,9 +185,9 @@ function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
       if (!lastDeploy && plan) return nextPlanAction(steps, planIdx) ?? { final: "اقدامی در نقشه باقی نمانده." };
       const fix = topDiag?.fix;
       if (fix?.redeploy && app && lastDeploy) {
-        return { call: "deploy_app", args: { app, port: fix.port ?? lastDeploy.args.port, platform: lastDeploy.args.platform }, say: "متغیر تنظیم شد؛ چون در زمان بیلد خوانده می‌شود، دوباره دیپلوی می‌کنم." };
+        return { call: "deploy_app", args: { app, port: fix.port ?? lastDeploy.args.port, platform: lastDeploy.args.platform }, say: "تنظیم انجام شد؛ سایت را دوباره می‌سازم تا اثر کند." };
       }
-      return { call: "check_health", args: { app: app ?? last.args.app, waitSeconds: 30 }, say: "متغیر تنظیم شد و اپ ری‌استارت می‌شود؛ سلامتش را بررسی می‌کنم." };
+      return { call: "check_health", args: { app: app ?? last.args.app, waitSeconds: 30 }, say: "تنظیم انجام شد؛ سایت دوباره روشن می‌شود و بررسی‌اش می‌کنم." };
     }
 
     case "apply_fix": {
@@ -195,15 +198,15 @@ function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
 
     case "deploy_app":
       if (last.dryRun) return { final: dryRunSummary(steps) };
-      return { call: "wait_for_release", args: { app: last.args.app, releaseId: last.data.releaseId }, say: "بیلد شروع شد؛ لاگ‌ها را زنده دنبال می‌کنم." };
+      return { call: "wait_for_release", args: { app: last.args.app, releaseId: last.data.releaseId }, say: "ساختن سایت شروع شد؛ معمولاً کمتر از یک دقیقه طول می‌کشد." };
 
     case "wait_for_release": {
-      if (!last.ok) return { final: `منتظر ماندن برای بیلد بی‌نتیجه ماند: ${last.summary}` };
+      if (!last.ok) return { final: `ساختن سایت بیش از حد طول کشید و متوقف شد: ${last.summary}` };
       const state = last.data.state;
       if (state === "READY") return { call: "check_health", args: { app: last.args.app, waitSeconds: 20 } };
       if (applied >= 3) return { final: giveUp(steps) };
-      if (state === "UNHEALTHY") return { call: "get_app_logs", args: { app: last.args.app, minutes: 15 }, say: "ریلیز بالا نیامد (UNHEALTHY). لاگ‌های اجرای برنامه را می‌خوانم." };
-      return { call: "diagnose_failure", args: { app: last.args.app, releaseId: last.args.releaseId }, say: "بیلد شکست خورد. علتش را از لاگ بیلد پیدا می‌کنم." };
+      if (state === "UNHEALTHY") return { call: "get_app_logs", args: { app: last.args.app, minutes: 15 }, say: "سایت ساخته شد ولی روشن نشد. دنبال علتش می‌گردم." };
+      return { call: "diagnose_failure", args: { app: last.args.app, releaseId: last.args.releaseId }, say: "ساختن سایت به خطا خورد. دنبال علتش می‌گردم." };
     }
 
     case "get_app_logs":
@@ -212,11 +215,11 @@ function deployFlow(repo: string, steps: Step[], repoUserText = ""): Decision {
     case "check_health":
       if (last.data.ok) return { final: successSummary(steps, last.data) };
       if (applied >= 3 || (lastDiag && lastDiag.data.healAttempt >= lastDiag.data.maxHealAttempts)) return { final: giveUp(steps) };
-      return { call: "get_app_logs", args: { app: last.args.app, minutes: 15 }, say: `آدرس ${last.data.url} جواب سالم نمی‌دهد (${faDigits(last.data.status ?? 0)}). لاگ‌ها را بررسی می‌کنم.` };
+      return { call: "get_app_logs", args: { app: last.args.app, minutes: 15 }, say: "سایت جواب درستی نمی‌دهد. دنبال علتش می‌گردم." };
 
     case "diagnose_failure":
-      if (!topDiag) return { final: "علت مشخصی در لاگ‌ها پیدا نکردم. لاگ‌ها در تایم‌لاین هستند؛ اگر توضیح بیشتری بدهید بررسی را ادامه می‌دهم." };
-      return { call: "search_liara_docs", args: { query: topDiag.docsQuery, k: 3 }, say: `ریشه‌ی مشکل: ${topDiag.titleFa}.\n${topDiag.explanationFa}` };
+      if (!topDiag) return { final: "علت مشخصی پیدا نکردم. اگر بگویید چه چیزی تغییر کرده، بررسی را ادامه می‌دهم." };
+      return { call: "search_liara_docs", args: { query: topDiag.docsQuery, k: 3 }, say: `مشکل را پیدا کردم: ${topDiag.plainFa ?? topDiag.titleFa}` };
 
     case "search_liara_docs":
       return proposeFix(steps, app ?? (lastDiag?.args.app as string | undefined));
@@ -240,36 +243,36 @@ function nextPlanAction(steps: Step[], planIdx: number): Decision | null {
   }
   const next = actions[done];
   if (!next) return null;
-  const say = next.tool === "create_app" ? `نقشه تأیید شد. اپ ${plan.appName} را می‌سازم.` : next.tool === "set_env_vars" ? "متغیرهای محیطی را تنظیم می‌کنم (مقدارها را نمی‌بینم)." : undefined;
+  const say = next.tool === "create_app" ? "عالی؛ شروع کردم." : next.tool === "set_env_vars" ? "تنظیمات سایت را وارد می‌کنم." : undefined;
   return { call: next.tool, args: next.args, say };
 }
 
 function proposeFix(steps: Step[], app: string | undefined): Decision {
   const diag = [...steps].reverse().find((s) => s.name === "diagnose_failure")?.data?.diagnoses?.[0];
   const docs = [...steps].reverse().find((s) => s.name === "search_liara_docs")?.data?.hits ?? [];
-  const cite = docs[0] ? `\nمستند لیارا: ${docs[0].title}\n${docs[0].url}` : "";
+  const cite = docs[0] ? `\nراهنمای لیارا در این باره: ${docs[0].url}` : "";
   const fix = diag?.fix;
   if (!fix) {
     if (app && diag?.rule === "crash_unknown") {
-      return { call: "restart_app", args: { app }, say: `${diag.titleFa}. اصلاح خودکار مطمئنی ندارم؛ یک ری‌استارت پیشنهاد می‌کنم تا ببینیم مشکل گذرا بوده یا نه.${cite}` };
+      return { call: "restart_app", args: { app }, say: `${diag.plainFa ?? diag.titleFa} پیشنهادم این است که سایت را یک بار خاموش و روشن کنیم تا ببینیم مشکل گذرا بوده یا نه.${cite}` };
     }
-    return { final: `${diag?.titleFa ?? "علت پیدا نشد"}.\n${diag?.explanationFa ?? ""}${cite}` };
+    return { final: `${diag?.plainFa ?? diag?.titleFa ?? "علت را پیدا نکردم."}${cite}` };
   }
   if (steps.filter((s) => s.name === "apply_fix" && s.ok).length >= 3) return { final: giveUp(steps) };
   if (fix.files?.length) {
     if (!steps.some((s) => s.name === "acquire_repo")) {
-      return { final: `${diag.titleFa}.\nاصلاح پیشنهادی (${fix.titleFa}) تغییر کد است؛ لینک مخزن را بفرستید تا آن را اعمال و دوباره دیپلوی کنم.${cite}` };
+      return { final: `${diag.plainFa ?? diag.titleFa}\nبرای درست کردنش باید کد پروژه کمی تغییر کند؛ لینک گیت‌هاب پروژه را بفرستید تا انجامش بدهم.${cite}` };
     }
-    return { call: "apply_fix", args: { fixId: fix.fixId }, say: `پیشنهاد اصلاح: ${fix.titleFa}. تغییر دقیق را برای تأیید نشان می‌دهم.${cite}` };
+    return { call: "apply_fix", args: { fixId: fix.fixId }, say: `راه‌حل را آماده کردم؛ برای تأیید نشانت می‌دهم.${cite}` };
   }
   if (fix.env?.length && app) {
     return {
       call: "set_env_vars",
       args: { app, vars: fix.env.map((e: { key: string; valueRef: string }) => ({ key: e.key, valueRef: e.valueRef })) },
-      say: `پیشنهاد اصلاح: ${fix.titleFa}.${cite}`,
+      say: `برای رفعش یک تنظیم لازم است؛ برای تأیید نشانت می‌دهم.${cite}`,
     };
   }
-  return { final: `${diag.titleFa}.${cite}` };
+  return { final: `${diag.plainFa ?? diag.titleFa}${cite}` };
 }
 
 // ── operate / SRE: "why is my site slow / down / 500?" ─────────
@@ -410,21 +413,18 @@ const CHANGING = new Set(["create_app", "set_env_vars", "deploy_app", "apply_fix
 /** Honest partial-state report: what already changed before the failure. */
 function appliedSoFar(steps: Step[]): string {
   const done = steps.filter((s) => CHANGING.has(s.name) && s.ok && !s.dryRun);
-  if (!done.length) return "هیچ تغییری روی منابع اعمال نشده؛ می‌توانید دوباره امتحان کنید.";
-  return `تا اینجا این تغییرها اعمال شده‌اند: ${done.map((s) => s.summary).join("؛ ")}. جزئیات و راه برگرداندن هر کدام در خلاصه‌ی اجرا و گزارش ممیزی است.`;
+  if (!done.length) return "هیچ تغییری روی حساب لیارای شما ایجاد نشد؛ می‌توانید دوباره امتحان کنید.";
+  return `تا اینجا این تغییرها اعمال شده‌اند: ${done.map((s) => s.summary).join("؛ ")}. راه برگرداندن هر کدام در کارت خلاصه آمده است.`;
 }
 
 function successSummary(steps: Step[], health: { url: string; latencyMs?: number }): string {
   const plan = steps.find((s) => s.name === "propose_deploy_plan" && s.ok)?.data;
   const diags = steps.filter((s) => s.name === "diagnose_failure").map((s) => s.data.diagnoses?.[0]).filter(Boolean);
-  const fixes = steps.filter((s) => (s.name === "apply_fix" || (s.name === "set_env_vars" && diags.length)) && s.ok).map((s) => s.summary);
-  const docs = steps.filter((s) => s.name === "search_liara_docs").flatMap((s) => s.data.hits ?? []).slice(0, 2);
-  const lines = [`اپ سالم و در دسترس است: ${health.url}`];
-  if (diags.length) lines.push(`مشکل پیدا و رفع شد: ${diags[0].titleFa}.`);
-  if (fixes.length) lines.push(`اصلاح‌ها: ${fixes.join("؛ ")}.`);
-  if (plan) lines.push(`هزینه‌ی ماهانه‌ی تخمینی: ${toman(plan.monthlyCostToman)}.`);
-  if (docs.length) lines.push(`مستندات استفاده‌شده: ${docs.map((d: { url: string }) => d.url).join(" ، ")}`);
-  if (steps.some((s) => s.name === "analyse_repo" && s.data.injection?.length)) lines.push("متن مشکوکی که در مخزن خطاب به هوش مصنوعی نوشته شده بود را اجرا نکردم.");
+  const lines = [`سایتت روشن است 🎉 ${health.url}`];
+  if (diags.length) lines.push("در مسیر یک مشکل پیدا شد که رفعش کردم؛ ماجرا در کارت خلاصه هست.");
+  if (plan) lines.push(`هزینه: حدود ${toman(plan.monthlyCostToman)} در ماه.`);
+  // Fixes and the docs consulted are on the summary card (and its technical view); keep the message short.
+  if (steps.some((s) => s.name === "analyse_repo" && s.data.injection?.length)) lines.push("متن مشکوکی که داخل پروژه سعی داشت به من دستور بدهد را اجرا نکردم.");
   return lines.join("\n");
 }
 

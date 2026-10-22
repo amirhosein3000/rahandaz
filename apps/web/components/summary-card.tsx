@@ -2,12 +2,14 @@
 import { useState } from "react";
 import type { SummaryCard as Summary } from "@rahandaz/core";
 import { faDuration, faNum, OUTCOME_FA, toman } from "@/lib/fa";
+import { useTechView } from "@/lib/view";
 import { Fa } from "./fa";
 import { Button, Card, Logo } from "./ui";
 
 /** End-of-run card. Built from run state on the server, not from model text. */
 export function SummaryCard({ card }: { card: Summary }) {
   const [copied, setCopied] = useState(false);
+  const [tech] = useTechView();
   const good = card.outcome === "healthy";
   const tone = good ? "ok" : card.outcome === "failed" ? "bad" : "info";
 
@@ -36,7 +38,7 @@ export function SummaryCard({ card }: { card: Summary }) {
         </div>
         <div className="text-left text-xs text-muted">
           <div>{faDuration(card.durationMs)}</div>
-          <div>{faNum(card.approvals)} تأیید · {faNum(card.steps)} گام</div>
+          {tech && <div>{faNum(card.approvals)} تأیید · {faNum(card.steps)} گام</div>}
         </div>
       </div>
       <div className="space-y-2.5 p-4 text-sm">
@@ -59,7 +61,7 @@ export function SummaryCard({ card }: { card: Summary }) {
           </ul>
         )}
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
-          {card.stack && <span><span className="text-muted">پشته: </span>{card.stack}</span>}
+          {tech && card.stack && <span><span className="text-muted">پشته: </span>{card.stack}</span>}
           {card.monthlyCostToman !== null && (
             <span>
               <span className="text-muted">هزینه: </span>
@@ -67,9 +69,9 @@ export function SummaryCard({ card }: { card: Summary }) {
               {!card.pricesVerified && <span className="text-muted"> (تخمینی)</span>}
             </span>
           )}
-          {card.healAttempts > 0 && <span><span className="text-muted">اصلاح خودکار: </span>{faNum(card.healAttempts)}</span>}
+          {tech && card.healAttempts > 0 && <span><span className="text-muted">اصلاح خودکار: </span>{faNum(card.healAttempts)}</span>}
         </div>
-        {card.docs.length > 0 && (
+        {tech && card.docs.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {card.docs.map((d) => (
               <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-[12px] hover:border-accent hover:text-accent">

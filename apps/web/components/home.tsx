@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { faNum } from "@/lib/fa";
 import { postJson, type ConsoleState, type RunView } from "@/lib/use-console";
 import { BreakPanel } from "./break-panel";
-import { Badge, Button, Card, Dot } from "./ui";
+import { Button, Card, Dot } from "./ui";
 
 /**
  * Landing for someone who knows nothing about deployment: one input, three
@@ -37,7 +37,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
       <section className="space-y-3 text-center">
         <h1 className="text-2xl font-extrabold leading-tight sm:text-3xl">سایتت را بده؛ بقیه‌اش با «راهی».</h1>
         <p className="mx-auto max-w-2xl text-[14px] leading-7 text-muted">
-          از اولین دیپلوی روی لیارا تا وقتی سایت کند شد یا خطا داد: بررسی می‌کنم، به زبان ساده توضیح می‌دهم، پیشنهاد می‌دهم و فقط با تأیید شما تغییر ایجاد می‌کنم.
+          لینک پروژه را بدهید تا روی لیارا منتشرش کنم. اگر سایت کند شد یا خطا داد، علتش را پیدا می‌کنم و به زبان ساده می‌گویم. هیچ کاری بدون «بله»ی شما انجام نمی‌شود.
         </p>
       </section>
 
@@ -75,17 +75,17 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
       <section className="grid gap-3 sm:grid-cols-3">
         <Intent
           icon="🚀"
-          title="اولین دیپلوی"
-          body="لینک گیت‌هاب را بدهید؛ پروژه را می‌شناسم، پلن و هزینه را پیشنهاد می‌دهم و بعد از تأیید شما مستقر می‌کنم."
-          onClick={() => focusWith("این پروژه را روی لیارا دیپلوی کن: https://github.com/")}
+          title="سایتم را منتشر کن"
+          body="لینک گیت‌هاب پروژه را بدهید؛ هزینه را می‌گویم و بعد از تأیید شما سایت را روشن می‌کنم."
+          onClick={() => focusWith("این پروژه را منتشر کن: https://github.com/")}
         />
         <Intent
           icon="🩺"
           title="سایتم مشکل دارد"
-          body="کند است؟ خطای ۵۰۰ می‌دهد؟ لاگ‌ها و منابع را بررسی می‌کنم و علت را با شاهد می‌گویم."
+          body="کند است؟ صفحه‌ی خطا نشان می‌دهد؟ بررسی می‌کنم و علت و راه‌حل را می‌گویم."
           onClick={() => (apps[0] ? void start(`سایت ${apps[0].name} مشکل دارد؛ بررسی کن چرا.`) : focusWith("سایتم کند شده؛ بررسی کن چرا."))}
         />
-        <Intent icon="📦" title="انتشار نسخه‌ی جدید" body="آخرین کد مخزن را منتشر می‌کنم و بعدش سلامت سایت را چک می‌کنم." onClick={() => {
+        <Intent icon="📦" title="تغییرات تازه را منتشر کن" body="آخرین تغییرات پروژه را روی سایت می‌برم و مطمئن می‌شوم سایت سالم بماند." onClick={() => {
           const withRepo = apps.find((a) => a.repo);
           if (withRepo) void start(`نسخه‌ی جدید ${withRepo.repo} را روی اپ ${withRepo.name} منتشر کن`);
           else focusWith("نسخه‌ی جدید https://github.com/ را منتشر کن");
@@ -94,7 +94,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
 
       {apps.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-[15px] font-bold">اپ‌های شما روی لیارا</h2>
+          <h2 className="text-[15px] font-bold">سایت‌های شما</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {apps.map((a) => {
               const ok = a.health?.ok ?? false;
@@ -104,8 +104,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
                   <div className="flex items-center gap-2">
                     <Dot tone={!ok ? "bad" : slow ? "warn" : "ok"} pulse={!ok || slow} />
                     <code className="font-mono text-[14px] font-semibold">{a.name}</code>
-                    <Badge tone="neutral">{a.platform}</Badge>
-                    <span className={`ms-auto text-[12px] ${!ok ? "text-bad" : slow ? "text-warn" : "text-ok"}`}>
+                                        <span className={`ms-auto text-[12px] ${!ok ? "text-bad" : slow ? "text-warn" : "text-ok"}`}>
                       {!ok ? "از دسترس خارج" : slow ? `کند (${faNum(a.health?.latencyMs ?? 0)}ms)` : "سالم"}
                     </span>
                   </div>
@@ -115,7 +114,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
                     </Button>
                     {a.repo && (
                       <Button variant="secondary" onClick={() => void start(`نسخه‌ی جدید ${a.repo} را روی اپ ${a.name} منتشر کن`)}>
-                        📦 انتشار نسخه‌ی جدید
+                        📦 انتشار تغییرات تازه
                       </Button>
                     )}
                   </div>
@@ -130,13 +129,13 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
 
       {samples.length > 0 && (
         <details className="rounded-xl border border-line bg-surface p-3 text-[13px]">
-          <summary className="cursor-pointer select-none font-semibold">نمونه‌پروژه‌های خراب برای امتحان</summary>
+          <summary className="cursor-pointer select-none font-semibold">پروژه ندارید؟ با یک نمونه امتحان کنید</summary>
           <div className="mt-2 flex flex-wrap gap-2">
             {samples.map((f) => (
               <button
                 key={f.name}
                 type="button"
-                onClick={() => void start(`این پروژه را روی لیارا دیپلوی کن: https://github.com/rahandaz-demo/${f.name}`)}
+                onClick={() => void start(`این پروژه را منتشر کن: https://github.com/rahandaz-demo/${f.name}`)}
                 className={`rounded-full border px-3 py-1.5 transition hover:border-accent hover:text-accent ${f.hero ? "border-accent/50 bg-accent-soft text-accent" : "border-line bg-surface-2"}`}
               >
                 {f.titleFa}

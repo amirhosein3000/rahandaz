@@ -60,7 +60,19 @@ describe("SRE agent", () => {
     expect(after!.compare?.resolved).toBe(true);
     expect(after!.compare!.scoreAfter).toBeGreaterThan(after!.compare!.scoreBefore);
     expect(run.summary?.outcome).toBe("healthy");
+    // The shareable card tells the story: what was wrong and what fixed it.
+    expect(run.summary?.rootCauseFa).toBe(before!.hypotheses[0]!.titleFa);
+    expect(run.summary?.fixesFa.length).toBe(1);
     expect(run.messages.at(-1)?.content).toContain("مشکل حل شد");
+  });
+
+  it("a repo that cannot be fetched ends as failed, in plain words", async () => {
+    const app = makeApp();
+    const run = await runToEnd(app, "https://github.com/acme/no-such-project-here");
+    expect(run.summary?.outcome).toBe("failed");
+    const last = String(run.messages.at(-1)?.content);
+    expect(last).toContain("لینک را چک کنید");
+    expect(last).not.toContain("git clone");
   });
 
   it("HTTP 500 from a database outage: cause found from logs, no fake fix, clear guidance + API limitation", async () => {

@@ -2,6 +2,21 @@
 
 Newest first. Each entry: what changed, what works, what's next.
 
+## 2026-10-22 (2): simple view for non-engineers
+
+User feedback: "the whole point is for non-engineers… it feels too complicated". Changes:
+- Simple view by default (`lib/view.ts`), «نمای فنی» switch in the header for the old layout. Simple view:
+  header = logo + switch + theme (+ «نسخه‌ی نمایشی» in mock); run page = one centred conversation (no
+  timeline panel); approval cards ask one plain question («سایت را روی اینترنت ببرم؟») with address + monthly
+  cost + «بله، منتشر کن» / «نه، فعلاً نه», everything else under «جزئیات فنی»; secret inputs say which value
+  and "ask the project's builder if unsure"; SRE report shows the main cause + fix, the rest folded.
+- Plain agent language: diagnoses have `plainFa`; scripted brain messages rewritten (no ports, builds,
+  env names); unreachable repo → "check the link, it must be public" instead of a raw git error;
+  real-model system prompt gets an "audience is not engineers" rule.
+- Stepper labels short and plain (شناخت · هزینه · ساختن · رفع مشکل · آماده); home copy without «دیپلوی».
+- Summary card: a run that ended on an error is «کار به نتیجه نرسید» (was «پاسخ داده شد»); SRE runs now
+  carry root cause + applied fix (tests in sre.test.ts).
+
 ## 2026-10-22: real token, console deployed on Liara
 
 - Token works (`pnpm smoke:liara` green). The account's balance is in its **team** (team ID
@@ -17,7 +32,7 @@ Newest first. Each entry: what changed, what works, what's next.
 - Verified live over HTTP: password enforced (401 without), health OK, a mock deploy
   (node-wrong-port) end to end in ~5s, and «خرابش کن» → RAM pressure → monitor incident → SRE report →
   plan upgrade approval → health 40 → 100.
-- Gap: the summary card of an SRE run has no root cause / fix (fields empty); fill them from the SRE report.
+- Gap found: SRE summary card had no root cause / fix (fixed in entry (2)).
 - Next: real-mode dry run locally against the team; Liara AI key; video.
 
 ## 2026-10-21 (4): official spec → SRE agent, beginner UX, domains, automation, limits, submission docs

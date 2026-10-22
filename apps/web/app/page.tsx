@@ -8,10 +8,12 @@ import { Timeline } from "@/components/timeline";
 import { Badge, Button } from "@/components/ui";
 import { STATUS_FA } from "@/lib/fa";
 import { postJson, useConsole } from "@/lib/use-console";
+import { useTechView } from "@/lib/view";
 
 export default function ConsolePage() {
   const { state, runs, current, select, connected } = useConsole();
   const [tab, setTab] = useState<"chat" | "timeline">("chat");
+  const [tech] = useTechView();
 
   if (!current) {
     return (
@@ -23,26 +25,46 @@ export default function ConsolePage() {
   }
 
   const live = current.status === "running" || current.status === "awaiting_approval";
+  const bar = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="ghost" onClick={() => select("")}>
+        → خانه
+      </Button>
+      <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
+        {current.trigger === "incident" ? "🚨 " : ""}
+        {current.title}
+      </span>
+      <Badge tone={current.status === "completed" ? "ok" : current.status === "failed" ? "bad" : "accent"}>{STATUS_FA[current.status]}</Badge>
+      {live && (
+        <Button variant="ghost" onClick={() => void postJson(`/api/runs/${current.id}/stop`, {})}>
+          توقف
+        </Button>
+      )}
+    </div>
+  );
+
+  if (!tech) {
+    // Simple view: one conversation, nothing technical on screen.
+    return (
+      <div className="flex min-h-dvh flex-col lg:h-dvh">
+        <Header state={state} connected={connected} active="console" />
+        <div className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-4">
+          {bar}
+          <Stepper run={current} />
+          <section className="flex h-[80dvh] min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface-2/40 lg:h-auto lg:flex-1" aria-label="گفتگو">
+            <ChatPanel run={current} />
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh">
       <Header state={state} connected={connected} active="console" />
 
       <div className="mx-auto flex w-full max-w-[1500px] min-h-0 flex-1 flex-col gap-3 px-3 py-3 sm:px-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" onClick={() => select("")}>
-            → خانه
-          </Button>
-          <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
-            {current.trigger === "incident" ? "🚨 " : ""}
-            {current.title}
-          </span>
-          <Badge tone={current.status === "completed" ? "ok" : current.status === "failed" ? "bad" : "accent"}>{STATUS_FA[current.status]}</Badge>
-          {live && (
-            <Button variant="ghost" onClick={() => void postJson(`/api/runs/${current.id}/stop`, {})}>
-              توقف
-            </Button>
-          )}
-        </div>
+        {bar}
 
         <Stepper run={current} />
 

@@ -13,18 +13,18 @@ export interface Stage {
 }
 
 const DEPLOY: Array<{ key: string; titleFa: string; tools: string[]; optional?: boolean }> = [
-  { key: "analyse", titleFa: "شناخت پروژه", tools: ["acquire_repo", "analyse_repo"] },
-  { key: "plan", titleFa: "نقشه و هزینه", tools: ["propose_deploy_plan"] },
-  { key: "deploy", titleFa: "استقرار", tools: ["create_app", "set_env_vars", "deploy_app", "wait_for_release"] },
-  { key: "fix", titleFa: "رفع خطا", tools: ["get_app_logs", "diagnose_failure", "search_liara_docs", "apply_fix"], optional: true },
-  { key: "verify", titleFa: "بررسی سلامت", tools: ["check_health"] },
+  { key: "analyse", titleFa: "شناخت", tools: ["acquire_repo", "analyse_repo"] },
+  { key: "plan", titleFa: "هزینه", tools: ["propose_deploy_plan"] },
+  { key: "deploy", titleFa: "ساختن", tools: ["create_app", "set_env_vars", "deploy_app", "wait_for_release"] },
+  { key: "fix", titleFa: "رفع مشکل", tools: ["get_app_logs", "diagnose_failure", "search_liara_docs", "apply_fix"], optional: true },
+  { key: "verify", titleFa: "آماده", tools: ["check_health"] },
 ];
 
 const SRE: Array<{ key: string; titleFa: string; tools: string[]; optional?: boolean }> = [
-  { key: "evidence", titleFa: "جمع‌آوری شواهد", tools: ["list_apps", "get_app_status", "get_app_logs", "get_metrics"] },
-  { key: "diagnose", titleFa: "تشخیص علت", tools: ["sre_check", "diagnose_failure", "search_liara_docs"] },
-  { key: "fix", titleFa: "اصلاح با تأیید شما", tools: ["resize_app", "restart_app", "set_env_vars", "apply_fix", "deploy_app"], optional: true },
-  { key: "verify", titleFa: "بررسی نتیجه", tools: ["sre_check:verify", "check_health"] },
+  { key: "evidence", titleFa: "بررسی", tools: ["list_apps", "get_app_status", "get_app_logs", "get_metrics"] },
+  { key: "diagnose", titleFa: "علت", tools: ["sre_check", "diagnose_failure", "search_liara_docs"] },
+  { key: "fix", titleFa: "رفع مشکل", tools: ["resize_app", "restart_app", "set_env_vars", "apply_fix", "deploy_app"], optional: true },
+  { key: "verify", titleFa: "نتیجه", tools: ["sre_check:verify", "check_health"] },
 ];
 
 export function runKind(events: AgentEvent[]): "deploy" | "sre" | "domain" | "simple" {
@@ -38,7 +38,7 @@ export function runKind(events: AgentEvent[]): "deploy" | "sre" | "domain" | "si
 /** Domain stages come straight from the latest checklist: it already knows who does what. */
 function domainStages(events: AgentEvent[], status: string): Stage[] {
   const last = [...events].reverse().find((e) => e.type === "domain_status");
-  const titles: Record<string, string> = { attach: "اتصال به اپ", records: "DNS و رکوردها", nameservers: "قدم شما در ایرنیک", verified: "تأیید لیارا", ssl: "SSL" };
+  const titles: Record<string, string> = { attach: "اتصال به سایت", records: "تنظیم آدرس", nameservers: "قدم شما در ایرنیک", verified: "تأیید لیارا", ssl: "قفل امنیتی (https)" };
   if (!last || last.type !== "domain_status") return Object.entries(titles).map(([key, titleFa]) => ({ key, titleFa, state: "pending" as StageState }));
   let activeSet = false;
   return last.status.steps.map((st) => {
