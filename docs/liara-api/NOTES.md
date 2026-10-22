@@ -31,7 +31,7 @@ We default to `https://api.liara.ir` (spec) and allow `LIARA_API_BASE_URL` to ov
 |---|---|---|---|
 | List apps | `GET /v1/projects` → `{ projects: [...] }` | read | spec `getApps` |
 | App details (incl. env **names**) | `GET /v1/projects/{name}` → `{ project: {...} }` | read | spec `getAppByName` |
-| Create app | `POST /v1/projects` `{ name, planID, platform, network?, readOnlyRootFilesystem? }` | mutating | spec `createApp` |
+| Create app | `POST /v1/projects` `{ name, planID, platform, bundlePlanID, network?, readOnlyRootFilesystem? }` | mutating | spec `createApp`; **bundlePlanID required** (live 400 on 2026-10-22: one of free/basic/standard/pro; basic = Bronze; CLI source) |
 | Delete app | `DELETE /v1/projects/{name}` | destructive | spec `deleteAppByName` |
 | Turn on/off | `POST /v1/projects/{name}/actions/scale` `{ scale: 0\|1 }` | mutating (1) / destructive (0) | spec `turnApp` |
 | Restart | `POST /v1/projects/{name}/actions/restart` | mutating | spec `restartApp` |

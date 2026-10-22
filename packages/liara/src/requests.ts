@@ -17,7 +17,8 @@ export const LiaraRequests = {
     return {
       method: "POST",
       path: "/v1/projects",
-      body: { name: input.name, planID: input.planId, platform: input.platform },
+      // bundlePlanID is required (400 without it, verified 2026-10-22); "free" plan → "free" bundle, else Bronze ("basic", 0 toman).
+      body: { name: input.name, planID: input.planId, platform: input.platform, bundlePlanID: input.bundlePlanId ?? (input.planId === "free" ? "free" : "basic") },
     };
   },
 

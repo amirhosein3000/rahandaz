@@ -179,6 +179,8 @@ export interface CreateAppInput {
   name: string;
   platform: string;
   planId: string;
+  /** Feature bundle: free | basic (Bronze) | standard (Silver) | pro (Gold). Required by the API (CLI source). */
+  bundlePlanId?: string;
 }
 
 export interface DeployInput {
