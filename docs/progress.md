@@ -2,6 +2,24 @@
 
 Newest first. Each entry: what changed, what works, what's next.
 
+## 2026-10-22: real token, console deployed on Liara
+
+- Token works (`pnpm smoke:liara` green). The account's balance is in its **team** (team ID
+  `6a874d2dfbcb940778bf8753`); personal-account creates fail with 402. Pass `--team-id` / `teamID`.
+- Live 400 showed `POST /v1/projects` requires `bundlePlanID` (free/basic/standard/pro; basic = Bronze);
+  fixed in `LiaraRequests.createApp` (default `basic`, `free` for the free plan). The app create also
+  needs a network on this account (`mizan-net`, the only one).
+- Console deployed with the official CLI: **https://rahandaz-console.liara.run** (docker, `small-g2`,
+  Bronze, disk `rahandaz-data` 1GB at /app/var). Env: `LIARA_MODE=mock MOCK_LLM=true
+  ALLOW_DESTRUCTIVE=true CONSOLE_PASSWORD=…` (password kept outside the repo in
+  `E:\hackaton\rahandaz-console-password.txt`; any username).
+- `.dockerignore` now excludes `.claude/` (other sessions' worktrees) and the local token file.
+- Verified live over HTTP: password enforced (401 without), health OK, a mock deploy
+  (node-wrong-port) end to end in ~5s, and «خرابش کن» → RAM pressure → monitor incident → SRE report →
+  plan upgrade approval → health 40 → 100.
+- Gap: the summary card of an SRE run has no root cause / fix (fields empty); fill them from the SRE report.
+- Next: real-mode dry run locally against the team; Liara AI key; video.
+
 ## 2026-10-21 (4): official spec → SRE agent, beginner UX, domains, automation, limits, submission docs
 
 The real brief arrived (docs/spec.md, scoring 100/100/50/50). Built against it:
