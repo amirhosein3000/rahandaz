@@ -99,6 +99,23 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
     </>
   );
 
+  if (!tech && resolved) {
+    // Decided: keep the conversation short, one line that says what you answered.
+    const question = p ? (p.appExists ? "نسخه‌ی جدید را منتشر کنم؟" : "سایت را روی اینترنت ببرم؟") : (plainTitle(approval) ?? approval.titleFa);
+    return (
+      <div className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] ${resolved === "approved" ? "border-ok/30 bg-ok-soft" : "border-line bg-surface-2"}`}>
+        <span className={resolved === "approved" ? "text-ok" : "text-muted"} aria-hidden="true">
+          {resolved === "approved" ? "✓" : "✕"}
+        </span>
+        <span className="min-w-0 flex-1 truncate">
+          <Fa text={question} />
+        </span>
+        <span className={`shrink-0 font-semibold ${resolved === "approved" ? "text-ok" : "text-muted"}`}>{resolved === "approved" ? "گفتید بله" : "گفتید نه"}</span>
+        {p && <span className="hidden shrink-0 text-[12px] text-muted sm:inline">· {toman(p.monthlyCostToman)} در ماه</span>}
+      </div>
+    );
+  }
+
   if (!tech) {
     return (
       <Card tone={destructive ? "bad" : "accent"} className="overflow-hidden">
@@ -126,7 +143,7 @@ export function ApprovalCard({ approval, resolved }: { approval: ApprovalRequest
           )}
 
           {approval.dryRun && <p className="text-[12.5px] text-info">حالت آزمایشی: فقط نشان می‌دهم چه کاری می‌کردم؛ چیزی واقعاً اجرا نمی‌شود.</p>}
-          {approval.taintedWarningFa && <p className="rounded-lg border border-warn/40 bg-warn-soft p-2.5 text-[12.5px] text-warn">⚠ {approval.taintedWarningFa}</p>}
+          {approval.taintedWarningFa && <p className="text-[12px] text-warn">⚠ داخل پروژه متنی بود که سعی کرد به هوش مصنوعی دستور بدهد؛ اجرا نشد. این کارت فقط از طرف خود راهی است.</p>}
 
           <p className="text-[12.5px] leading-6 text-muted">
             {p ? "تا «بله» نگویید هیچ چیزی ساخته نمی‌شود و هزینه‌ای ندارد." : "فقط همین یک کار انجام می‌شود."}

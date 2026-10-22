@@ -1,7 +1,8 @@
 "use client";
 import { useRef, useState } from "react";
-import { faNum } from "@/lib/fa";
+import { faNum, friendlyTitle } from "@/lib/fa";
 import { postJson, type ConsoleState, type RunView } from "@/lib/use-console";
+import { useTechView } from "@/lib/view";
 import { BreakPanel } from "./break-panel";
 import { Button, Card, Dot } from "./ui";
 
@@ -31,6 +32,8 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
 
   const apps = state?.apps ?? [];
   const samples = state?.fixtures.filter((f) => f.failure) ?? [];
+  const hero = samples.find((f) => f.hero) ?? samples[0];
+  const [tech] = useTechView();
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 px-3 py-6 sm:px-4 sm:py-10">
@@ -64,7 +67,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
           aria-label="درخواست شما"
         />
         <div className="flex items-center justify-between gap-2 px-1">
-          <span className="text-[12px] text-muted">هیچ تغییری بدون تأیید شما انجام نمی‌شود.</span>
+          <span className="text-[12px] text-muted">مثل پیام دادن به یک همکار بنویسید.</span>
           <Button type="submit" disabled={busy || !text.trim()}>
             {busy ? "در حال شروع…" : "شروع"}
           </Button>
@@ -72,7 +75,16 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
         {error && <p className="px-1 pt-1 text-[13px] text-bad">{error}</p>}
       </form>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      {hero && (
+        <p className="-mt-3 text-center text-[13px] text-muted">
+          پروژه‌ای ندارید؟{" "}
+          <button type="button" disabled={busy} onClick={() => void start(`این پروژه را منتشر کن: https://github.com/rahandaz-demo/${hero.name}`)} className="font-semibold text-accent underline-offset-4 hover:underline">
+            با یک سایت نمونه امتحان کنید ←
+          </button>
+        </p>
+      )}
+
+      <section className="grid gap-2 sm:grid-cols-3 sm:gap-3">
         <Intent
           icon="🚀"
           title="سایتم را منتشر کن"
@@ -127,7 +139,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
 
       {state?.modes.allowDestructive && <BreakPanel state={state} runs={runs} />}
 
-      {samples.length > 0 && (
+      {tech && samples.length > 0 && (
         <details className="rounded-xl border border-line bg-surface p-3 text-[13px]">
           <summary className="cursor-pointer select-none font-semibold">پروژه ندارید؟ با یک نمونه امتحان کنید</summary>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -155,7 +167,7 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
                   <Dot tone={r.status === "completed" ? "ok" : r.status === "failed" ? "bad" : "accent"} pulse={r.status === "running" || r.status === "awaiting_approval"} />
                   <span className="min-w-0 flex-1 truncate">
                     {r.trigger === "incident" ? "🚨 " : ""}
-                    {r.title}
+                    {friendlyTitle(r.title)}
                   </span>
                   <span className="shrink-0 text-[12px] text-muted">{r.status === "awaiting_approval" ? "منتظر تأیید" : ""}</span>
                 </button>
@@ -170,12 +182,15 @@ export function Home({ state, runs, onOpen }: { state: ConsoleState | null; runs
 
 function Intent({ icon, title, body, onClick }: { icon: string; title: string; body: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="group rounded-xl border border-line bg-surface p-4 text-start shadow-card transition hover:border-accent">
+    // Phone: a compact row (icon beside the text); laptop: a card.
+    <button type="button" onClick={onClick} className="group flex items-start gap-3 rounded-xl border border-line bg-surface p-3 text-start shadow-card transition hover:border-accent sm:block sm:p-4">
       <div className="text-2xl" aria-hidden="true">
         {icon}
       </div>
-      <div className="mt-2 text-[15px] font-bold group-hover:text-accent">{title}</div>
-      <p className="mt-1 text-[12.5px] leading-6 text-muted">{body}</p>
+      <div className="min-w-0">
+        <div className="text-[15px] font-bold group-hover:text-accent sm:mt-2">{title}</div>
+        <p className="mt-0.5 text-[12.5px] leading-6 text-muted sm:mt-1">{body}</p>
+      </div>
     </button>
   );
 }

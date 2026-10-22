@@ -43,8 +43,16 @@ export function SummaryCard({ card }: { card: Summary }) {
       </div>
       <div className="space-y-2.5 p-4 text-sm">
         {card.url && good && (
-          <a href={card.url} target="_blank" rel="noreferrer" className="block truncate font-mono text-[13px] font-semibold text-accent underline-offset-4 hover:underline" dir="ltr">
-            {card.url}
+          <a
+            href={card.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between gap-3 rounded-xl bg-ok px-4 py-3 text-white shadow-card transition hover:opacity-90"
+          >
+            <span className="shrink-0 whitespace-nowrap text-[15px] font-bold">باز کردن سایت ↗</span>
+            <span className="truncate font-mono text-[12.5px] opacity-90" dir="ltr">
+              {card.url.replace(/^https?:\/\//, "")}
+            </span>
           </a>
         )}
         {card.rootCauseFa && (

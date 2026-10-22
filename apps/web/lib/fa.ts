@@ -57,3 +57,11 @@ export const OUTCOME_FA: Record<string, string> = {
   waiting_user: "منتظر یک قدم از طرف شما",
   stopped: "متوقف شد",
 };
+
+/** A run's title for people: "انتشار shop" instead of a raw GitHub URL. */
+export function friendlyTitle(title: string): string {
+  const repo = title.match(/github\.com\/[^/\s]+\/([^/\s?#]+)/i)?.[1]?.replace(/\.git$/, "");
+  if (!repo) return title;
+  const rest = title.replace(/https?:\/\/\S+/g, "").trim();
+  return rest && !/منتشر|دیپلوی|deploy/i.test(rest) ? rest : `انتشار ${repo}`;
+}

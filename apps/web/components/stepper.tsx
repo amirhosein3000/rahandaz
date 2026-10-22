@@ -21,6 +21,8 @@ export function Stepper({ run }: { run: RunView }) {
   }, [live]);
   const end = live ? now : Date.parse(run.events.at(-1)?.ts ?? run.startedAt);
   if (!stages.length) return null;
+  const firstOpen = stages.findIndex((s) => s.state === "waiting" || s.state === "active" || s.state === "failed");
+  const focus = firstOpen >= 0 ? firstOpen : stages.length - 1;
 
   return (
     <div className="rounded-xl border border-line bg-surface p-3 shadow-card">
@@ -43,8 +45,9 @@ export function Stepper({ run }: { run: RunView }) {
             >
               {s.state === "active" ? <Spinner /> : ICON[s.state]}
             </span>
-            <span className={`whitespace-nowrap text-[12.5px] ${s.state === "pending" ? "text-muted" : "font-semibold"} ${s.state === "waiting" ? "text-accent" : ""}`}>{s.titleFa}</span>
-            {i < stages.length - 1 && <span className={`mx-1 h-px w-5 shrink-0 sm:w-8 ${s.state === "done" ? "bg-ok" : "bg-line"}`} aria-hidden="true" />}
+            {/* Phone: only the step that matters now keeps its label; the rest are dots. */}
+            <span className={`whitespace-nowrap text-[12.5px] ${i === focus ? "" : "sr-only sm:not-sr-only"} ${s.state === "pending" ? "text-muted" : "font-semibold"} ${s.state === "waiting" ? "text-accent" : ""}`}>{s.titleFa}</span>
+            {i < stages.length - 1 && <span className={`mx-1 h-px w-4 shrink-0 sm:w-8 ${s.state === "done" ? "bg-ok" : "bg-line"}`} aria-hidden="true" />}
           </li>
         ))}
       </ol>

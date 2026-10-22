@@ -24,7 +24,8 @@ export function buildSummary(
   const firstSre = events.find((e) => e.type === "sre_report" && e.report.status !== "healthy" && e.report.hypotheses.length > 0);
   const rootCauseFa =
     firstDiagnosis && firstDiagnosis.type === "diagnosis"
-      ? firstDiagnosis.diagnoses[0]!.titleFa
+      ? // plainFa is "problem؛ what I'll do": the card states the problem only (the fixes are listed separately).
+        (firstDiagnosis.diagnoses[0]!.plainFa?.split("؛")[0]?.replace(/\.$/, "") ?? firstDiagnosis.diagnoses[0]!.titleFa)
       : firstSre && firstSre.type === "sre_report"
         ? firstSre.report.hypotheses[0]!.titleFa
         : null;

@@ -2,6 +2,22 @@
 
 Newest first. Each entry: what changed, what works, what's next.
 
+## 2026-10-22 (3): UX polish + SRE false alarm fix
+
+- Chat: consecutive agent messages grouped (one avatar); Liara docs links render as a «📄 راهنمای لیارا» chip,
+  other URLs show just the address; decided approval cards shrink to one line («✓ … گفتید بله»); only the
+  latest summary card is shown; «قدم بعدی؟» chips after a run (connect a domain → prefilled input with
+  example.ir selected, auto-deploy on push, health check).
+- Summary card: big green «باز کردن سایت ↗» button; root cause in plain words (plainFa, problem part only).
+- Run title: «انتشار <repo>» instead of a raw GitHub URL (`friendlyTitle`); stepper on phones shows only the
+  current step's label; home intents are compact rows on phones; «پروژه‌ای ندارید؟ با یک سایت نمونه امتحان
+  کنید» starts the hero sample (full sample list only in the technical view).
+- Bug (intelligence): a health check right after a repaired deploy re-diagnosed the old release's crash
+  (port mismatch + restarts) and proposed the same fix again. `sre_check` now judges only logs since the
+  newest READY release; mock restart count resets per release (like real containers); pre-deployed mock apps
+  have a 2-day-old release. Test: sre.test.ts › health check right after a repaired deploy.
+- SRE chat message is now 2–3 lines (the report card has the detail).
+
 ## 2026-10-22 (2): simple view for non-engineers
 
 User feedback: "the whole point is for non-engineers… it feels too complicated". Changes:

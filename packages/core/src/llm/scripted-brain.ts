@@ -277,11 +277,10 @@ function proposeFix(steps: Step[], app: string | undefined): Decision {
 
 // ── operate / SRE: "why is my site slow / down / 500?" ─────────
 
-const SEVERITY_FA: Record<string, string> = { critical: "🔴", warning: "🟠", ok: "🟢", unknown: "⚪" };
 
 function operateFlow(userText: string, steps: Step[]): Decision {
   const last = steps[steps.length - 1];
-  if (!last) return { call: "list_apps", args: {}, say: "اپ‌ها را پیدا می‌کنم و بررسی SRE را شروع می‌کنم." };
+  if (!last) return { call: "list_apps", args: {}, say: "سایت را بررسی می‌کنم: در دسترس بودن، سرعت، خطاها و منابع." };
   if (!last.ok && last.name !== "check_health") return { final: `بررسی متوقف شد: ${last.summary}\n${appliedSoFar(steps)}` };
 
   const firstCheck = steps.find((s) => s.name === "sre_check");
@@ -316,21 +315,12 @@ function operateFlow(userText: string, steps: Step[]): Decision {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function reportText(r: any, top: any): string {
-  const lines = [`امتیاز سلامت ${r.app}: ${r.score} از ۱۰۰. ${r.headlineFa}`];
-  const bad = (r.checks ?? []).filter((c: { severity: string }) => c.severity === "critical" || c.severity === "warning");
-  if (bad.length) lines.push(...bad.map((c: { severity: string; detailFa: string }) => `${SEVERITY_FA[c.severity]} ${c.detailFa}`));
-  const hs = (r.hypotheses ?? []).slice(0, 3);
-  if (hs.length) {
-    lines.push("", "علت‌های احتمالی، به ترتیب احتمال:");
-    hs.forEach((h: { titleFa: string; likelihood: number }, i: number) => lines.push(`${i + 1}. ${h.titleFa} (احتمال ${Math.round(h.likelihood * 100)}٪)`));
-  }
-  if (top) {
-    lines.push("", top.explanationFa);
-    if (top.docs?.[0]) lines.push(`مستند لیارا: ${top.docs[0].url}`);
-    if (top.action) lines.push(`پیشنهاد: ${top.action.titleFa}. با تأیید شما انجامش می‌دهم و بعد نتیجه را دوباره بررسی می‌کنم.`);
-    else if (top.guidanceFa?.length) lines.push("این مورد از طریق API لیارا قابل انجام نیست؛ کارهایی که خودتان باید بکنید:", ...top.guidanceFa.map((g: string) => `• ${g}`));
-  }
-  if (!top?.action && r.limitationsFa?.length) lines.push("", ...r.limitationsFa.map((l: string) => `ⓘ ${l}`));
+  // Short: the report card right above shows every check, cause, evidence and limitation.
+  if (!top) return r.status === "healthy" ? `سایت ${r.app} سالم است ✓ مشکلی پیدا نکردم.` : r.headlineFa;
+  const lines = [`بررسی کردم. محتمل‌ترین علت: ${top.titleFa}.`];
+  if (top.action) lines.push("راه‌حل را آماده کردم؛ با تأیید شما انجامش می‌دهم و بعد دوباره بررسی می‌کنم که واقعاً درست شده باشد.");
+  else if (top.guidanceFa?.length) lines.push("این یکی از طریق API لیارا قابل انجام نیست؛ قدم‌هایی که خودتان باید بردارید در کارت گزارش آمده.");
+  if (top.docs?.[0]) lines.push(`راهنمای لیارا در این باره: ${top.docs[0].url}`);
   return lines.join("\n");
 }
 

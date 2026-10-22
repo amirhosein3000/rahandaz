@@ -6,7 +6,7 @@ import { Home } from "@/components/home";
 import { Stepper } from "@/components/stepper";
 import { Timeline } from "@/components/timeline";
 import { Badge, Button } from "@/components/ui";
-import { STATUS_FA } from "@/lib/fa";
+import { friendlyTitle, STATUS_FA } from "@/lib/fa";
 import { postJson, useConsole } from "@/lib/use-console";
 import { useTechView } from "@/lib/view";
 
@@ -32,7 +32,7 @@ export default function ConsolePage() {
       </Button>
       <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
         {current.trigger === "incident" ? "🚨 " : ""}
-        {current.title}
+        {friendlyTitle(current.title)}
       </span>
       <Badge tone={current.status === "completed" ? "ok" : current.status === "failed" ? "bad" : "accent"}>{STATUS_FA[current.status]}</Badge>
       {live && (

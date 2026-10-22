@@ -66,6 +66,19 @@ describe("SRE agent", () => {
     expect(run.messages.at(-1)?.content).toContain("مشکل حل شد");
   });
 
+  it("health check right after a repaired deploy: the replaced release's crash logs are history, not a problem", async () => {
+    const app = makeApp();
+    const run = await runToEnd(app, "https://github.com/acme/node-wrong-port");
+    expect(run.summary?.outcome).toBe("healthy");
+    expect(app.runtime.sendMessage(run.id, "بررسی کامل سلامت اپ node-wrong-port: لاگ‌ها، منابع و خطاها").ok).toBe(true);
+    const s = await app.runtime.settled(run.id);
+    const r = lastReport(app, run.id).at(-1)!;
+    expect(r.status).toBe("healthy");
+    expect(r.hypotheses).toEqual([]);
+    expect(r.hypotheses.some((h) => h.action)).toBe(false);
+    expect(s.pendingApprovalId).toBeFalsy();
+  });
+
   it("a repo that cannot be fetched ends as failed, in plain words", async () => {
     const app = makeApp();
     const run = await runToEnd(app, "https://github.com/acme/no-such-project-here");
@@ -88,7 +101,7 @@ describe("SRE agent", () => {
     expect(r!.limitationsFa.join(" ")).toMatch(/API لیارا/);
     expect(run.applied).toEqual([]);
     const text = run.messages.at(-1)?.content ?? "";
-    expect(text).toContain("علت‌های احتمالی");
+    expect(text).toContain(r!.hypotheses[0]!.titleFa);
     expect(text).toContain("قابل انجام نیست");
   });
 

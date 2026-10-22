@@ -122,6 +122,8 @@ export class MockLiaraClient implements LiaraClient {
     const app = this.newApp({ name: seed.name, platform: seed.platform, planId: seed.planId });
     for (const [k, v] of Object.entries(seed.env)) app.env.set(k, v);
     const release = this.startRelease(app, { app: seed.name, sourceDir: seed.sourceDir, port: seed.port, platform: seed.platform }, true);
+    // A pre-deployed app has been running for a while: its release predates today's traffic logs.
+    release.startedAt -= 2 * 24 * 3600_000;
     this.settle(app);
     return release;
   }
@@ -176,7 +178,8 @@ export class MockLiaraClient implements LiaraClient {
     latest.applied = true;
     if (!latest.outcome.buildOk) return; // failed builds never replace the running release
     app.runtime = latest.outcome;
-    if (latest.outcome.finalState === "UNHEALTHY") app.restarts += 3;
+    // New release = new containers: the restart count starts over (like Liara's per-container count).
+    app.restarts = latest.outcome.finalState === "UNHEALTHY" ? 3 : 0;
     this.appendLogs(app, latest.outcome.runtimeLines);
   }
 

@@ -45,9 +45,13 @@ export const sreCheckTool = defineTool({
       ctx.liara.listReleases(a.app).catch((): Release[] => []),
       ctx.liara.listPlans(),
     ]);
-    // After a fix, only judge by what happened since the fix (old errors are history, not the present).
+    // Old errors are history, not the present: after a fix, judge only by what happened since the fix;
+    // with a healthy (READY) newest release, only by that release's logs (a replaced broken release's crash
+    // lines would otherwise re-diagnose a problem that is already fixed).
     const fixAt = a.afterChange ? Date.parse(ctx.run.applied.at(-1)?.ts ?? "") : NaN;
-    const window = Number.isFinite(fixAt) ? logs.filter((l) => Date.parse(l.ts) >= fixAt) : logs;
+    const releaseAt = releases[0]?.state === "READY" ? Date.parse(releases[0].createdAt) : NaN;
+    const from = Math.max(Number.isFinite(fixAt) ? fixAt : -Infinity, Number.isFinite(releaseAt) ? releaseAt : -Infinity);
+    const window = Number.isFinite(from) ? logs.filter((l) => Date.parse(l.ts) >= from) : logs;
     const failed = releases.find((r) => ["FAILED", "UNHEALTHY"].includes(r.state));
     const buildLines = failed && failed.id === releases[0]?.id ? (await ctx.liara.getBuildLogs(failed.id).catch(() => [])).map((l) => l.line) : [];
     const diagnoses = diagnose({
