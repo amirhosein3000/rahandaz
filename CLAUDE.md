@@ -139,7 +139,7 @@ pnpm smoke:liara                # real, read-only: proves LIARA_API_TOKEN works 
 | Real, live | add `DRY_RUN=false ALLOWED_APPS=rahandaz-*`. **Only after the user says so.** |
 | Break it on stage | add `ALLOW_DESTRUCTIVE=true` (mock: `demo-shop` is pre-deployed) |
 | Chat bot | `CHAT_BOT_TOKEN=… CHAT_ALLOWED_IDS=<your chat id>` (Bale default; Telegram: `CHAT_BOT_API_BASE=https://api.telegram.org`) |
-| Deployed console | Docker + `liara.json` at the root; set `CONSOLE_PASSWORD`; disk `rahandaz-data` → `/app/var` |
+| Deployed console | Docker + `liara.json` at the root; set `CONSOLE_PASSWORD`; disk `rahandaz-data` → `/app/var`. Deploy with `liara deploy --team-id … -b germany` (the Iran builder hit the 20-min build timeout on npm installs) |
 
 Port 3000 on the dev box is usually taken by another project → the console uses **3200**.
 `docs.liara.ir` is unreachable from the dev box; use `data/liara-docs` for doc content.

@@ -291,6 +291,9 @@ function operateFlow(userText: string, steps: Step[]): Decision {
       const apps = (last.data.apps ?? []) as Array<{ name: string; status: string }>;
       if (!apps.length) return { final: "روی این حساب اپی پیدا نکردم. اگر لینک مخزن را بفرستید، اول آن را مستقر می‌کنم." };
       const named = [...apps].sort((a, b) => b.name.length - a.name.length).find((a) => userText.includes(a.name));
+      // Asked about a specific site that isn't on this account: say so, never silently check another one.
+      const asked = userText.match(/اپ\s+([a-z0-9][a-z0-9-]{2,31})/)?.[1];
+      if (asked && !named) return { final: `سایتی به نام ${asked} روی این حساب پیدا نکردم. سایت‌های شما: ${apps.map((a) => a.name).join("، ")}.` };
       const target = named ?? apps.find((a) => a.status === "crashed") ?? apps[0]!;
       return { call: "sre_check", args: { app: target.name }, say: named ? undefined : `${target.name} را بررسی می‌کنم.` };
     }

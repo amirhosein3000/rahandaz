@@ -79,6 +79,14 @@ describe("SRE agent", () => {
     expect(s.pendingApprovalId).toBeFalsy();
   });
 
+  it("asked about a site that does not exist: says so instead of checking another one", async () => {
+    const app = makeApp();
+    const run = await runToEnd(app, "بررسی کامل سلامت اپ no-such-site");
+    expect(lastReport(app, run.id)).toEqual([]);
+    expect(String(run.messages.at(-1)?.content)).toContain("no-such-site");
+    expect(String(run.messages.at(-1)?.content)).toContain("demo-shop");
+  });
+
   it("a repo that cannot be fetched ends as failed, in plain words", async () => {
     const app = makeApp();
     const run = await runToEnd(app, "https://github.com/acme/no-such-project-here");
