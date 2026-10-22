@@ -7,3 +7,7 @@ var
 !.env.example
 .git
 coverage
+.claude
+.workspaces
+liara.txt
+*.tsbuildinfo
